@@ -1,0 +1,1656 @@
+
+                                 *****************
+                                 * O   R   C   A *
+                                 *****************
+
+           --- An Ab Initio, DFT and Semiempirical electronic structure package ---
+
+                  #######################################################
+                  #                        -***-                        #
+                  #          Department of theory and spectroscopy      #
+                  #               Directorship: Frank Neese             #
+                  #        Max Planck Institute fuer Kohlenforschung    #
+                  #                Kaiser Wilhelm Platz 1               #
+                  #                 D-45470 Muelheim/Ruhr               #
+                  #                      Germany                        #
+                  #                                                     #
+                  #                  All rights reserved                #
+                  #                        -***-                        #
+                  #######################################################
+
+
+                         Program Version 4.2.1 -  RELEASE  -
+
+
+ With contributions from (in alphabetic order):
+   Daniel Aravena         : Magnetic Suceptibility
+   Michael Atanasov       : Ab Initio Ligand Field Theory (pilot matlab implementation)
+   Alexander A. Auer      : GIAO ZORA, VPT2
+   Ute Becker             : Parallelization
+   Giovanni Bistoni       : ED, misc. LED, open-shell LED, HFLD
+   Martin Brehm           : Molecular dynamics
+   Dmytro Bykov           : SCF Hessian
+   Vijay G. Chilkuri      : MRCI spin determinant printing, contributions to CSF-ICE
+   Dipayan Datta          : RHF DLPNO-CCSD density
+   Achintya Kumar Dutta   : EOM-CC, STEOM-CC
+   Dmitry Ganyushin       : Spin-Orbit,Spin-Spin,Magnetic field MRCI
+   Miquel Garcia          : C-PCM Hessian, Gaussian charge scheme
+   Yang Guo               : DLPNO-NEVPT2, CIM, IAO-localization
+   Andreas Hansen         : Spin unrestricted coupled pair/coupled cluster methods
+   Benjamin Helmich-Paris : CASSCF linear response (MC-RPA)
+   Lee Huntington         : MR-EOM, pCC
+   Robert Izsak           : Overlap fitted RIJCOSX, COSX-SCS-MP3, EOM
+   Christian Kollmar      : KDIIS, OOCD, Brueckner-CCSD(T), CCSD density
+   Simone Kossmann        : Meta GGA functionals, TD-DFT gradient, OOMP2, MP2 Hessian
+   Martin Krupicka        : AUTO-CI
+   Lucas Lang             : DCDCAS
+   Dagmar Lenk            : GEPOL surface, SMD
+   Dimitrios Liakos       : Extrapolation schemes; Compound Job, initial MDCI parallelization
+   Dimitrios Manganas     : Further ROCIS development; embedding schemes
+   Dimitrios Pantazis     : SARC Basis sets
+   Taras Petrenko         : DFT Hessian,TD-DFT gradient, ASA, ECA, R-Raman, ABS, FL, XAS/XES, NRVS
+   Peter Pinski           : DLPNO-MP2, DLPNO-MP2 Gradient
+   Christoph Reimann      : Effective Core Potentials
+   Marius Retegan         : Local ZFS, SOC
+   Christoph Riplinger    : Optimizer, TS searches, QM/MM, DLPNO-CCSD(T), (RO)-DLPNO pert. Triples
+   Tobias Risthaus        : Range-separated hybrids, TD-DFT gradient, RPA, STAB
+   Michael Roemelt        : Original ROCIS implementation
+   Masaaki Saitow         : Open-shell DLPNO-CCSD energy and density
+   Barbara Sandhoefer     : DKH picture change effects
+   Avijit Sen             : IP-ROCIS
+   Kantharuban Sivalingam : CASSCF convergence, NEVPT2, FIC-MRCI
+   Bernardo de Souza      : ESD, SOC TD-DFT
+   Georgi Stoychev        : AutoAux, RI-MP2 NMR
+   Willem Van den Heuvel  : Paramagnetic NMR
+   Boris Wezisla          : Elementary symmetry handling
+   Frank Wennmohs         : Technical directorship
+
+
+ We gratefully acknowledge several colleagues who have allowed us to
+ interface, adapt or use parts of their codes:
+   Stefan Grimme, W. Hujo, H. Kruse,             : VdW corrections, initial TS optimization,
+                  C. Bannwarth                     DFT functionals, gCP, sTDA/sTD-DF
+   Ed Valeev, F. Pavosevic, A. Kumar             : LibInt (2-el integral package), F12 methods
+   Garnet Chan, S. Sharma, J. Yang, R. Olivares  : DMRG
+   Ulf Ekstrom                                   : XCFun DFT Library
+   Mihaly Kallay                                 : mrcc  (arbitrary order and MRCC methods)
+   Andreas Klamt, Michael Diedenhofen            : otool_cosmo (COSMO solvation model)
+   Jiri Pittner, Ondrej Demel                    : Mk-CCSD
+   Frank Weinhold                                : gennbo (NPA and NBO analysis)
+   Christopher J. Cramer and Donald G. Truhlar   : smd solvation model
+   Lars Goerigk                                  : TD-DFT with DH, B97 family of functionals
+   V. Asgeirsson, H. Jonsson                     : NEB implementation
+   FAccTs GmbH                                   : IRC, NEB, NEB-TS, Multilevel, MM, QM/MM, CI optimization
+   S Lehtola, MJT Oliveira, MAL Marques          : LibXC Library
+
+
+ Your calculation uses the libint2 library for the computation of 2-el integrals
+ For citations please refer to: http://libint.valeyev.net
+
+ Your ORCA version has been built with support for libXC version: 4.2.3
+ For citations please refer to: https://tddft.org/programs/libxc/
+
+ This ORCA versions uses:
+   CBLAS   interface :  Fast vector & matrix operations
+   LAPACKE interface :  Fast linear algebra routines
+   SCALAPACK package :  Parallel linear algebra routines
+
+
+leaving
+----- Orbital basis set information -----
+Your calculation utilizes the basis: def2-SVP
+   F. Weigend and R. Ahlrichs, Phys. Chem. Chem. Phys. 7, 3297 (2005).
+
+================================================================================
+                                        WARNINGS
+                       Please study these warnings very carefully!
+================================================================================
+
+
+WARNING: Direct SCF is incompatible with Method<>HF and Method<>DFT
+  ===> : conventional SCF is chosen
+
+WARNING: The NDO methods need Guess=HUECKEL or Guess=HCORE or Guess=MOREAD
+  ===> : Guess is set to Hueckel
+
+WARNING: The NDO methods need %rel::SOCType==1
+  ===> : %rel::SOCType is set to 1
+
+WARNING: The NDO methods cannot have frozencore=1
+  ===> : %method FrozenCore=0 end
+INFO   : Checking CIS options ...
+
+INFO   : the flag for use of LIBINT has been found!
+
+================================================================================
+                                       INPUT FILE
+================================================================================
+NAME = orca.inp
+|  1> !zindo/s tightscf scfconvforced
+|  2> %cis nroots 10 dotrans all donto true end
+|  3> 
+|  4> *xyz 0 1
+|  5> C 0.3068999946117401 1.3502999544143677 1.5120999813079834
+|  6> C 0.25380000472068787 1.6468000411987305 0.21480000019073486
+|  7> C -0.13300000131130219 -0.6064000129699707 -0.6705999970436096
+|  8> C 0.4528999924659729 -0.052299998700618744 1.972499966621399
+|  9> C 0.43459999561309814 1.1699999570846558 -2.1823999881744385
+| 10> N -0.18060000240802765 -1.3595999479293823 -1.698099970817566
+| 11> N 0.23280000686645508 0.7210000157356262 -0.8131999969482422
+| 12> S -0.6007999777793884 -1.169600009918213 0.9672999978065491
+| 13> H 0.2921000123023987 2.1458001136779785 2.2421000003814697
+| 14> H 0.24529999494552612 2.676100015640259 -0.12129999697208405
+| 15> H 1.4833999872207642 -0.40389999747276306 1.9148999452590942
+| 16> H 0.1103999987244606 -0.17430000007152557 2.998699903488159
+| 17> H 1.173799991607666 0.5437999963760376 -2.670300006866455
+| 18> H -0.4893999993801117 1.1033999919891357 -2.7511000633239746
+| 19> H 0.7838000059127808 2.1977999210357666 -2.1805999279022217
+| 20> H -0.4839000105857849 -2.2936999797821045 -1.452299952507019
+| 21> *
+| 22> 
+| 23>                          ****END OF INPUT****
+================================================================================
+
+                       ****************************
+                       * Single Point Calculation *
+                       ****************************
+
+---------------------------------
+CARTESIAN COORDINATES (ANGSTROEM)
+---------------------------------
+  C      0.306900    1.350300    1.512100
+  C      0.253800    1.646800    0.214800
+  C     -0.133000   -0.606400   -0.670600
+  C      0.452900   -0.052300    1.972500
+  C      0.434600    1.170000   -2.182400
+  N     -0.180600   -1.359600   -1.698100
+  N      0.232800    0.721000   -0.813200
+  S     -0.600800   -1.169600    0.967300
+  H      0.292100    2.145800    2.242100
+  H      0.245300    2.676100   -0.121300
+  H      1.483400   -0.403900    1.914900
+  H      0.110400   -0.174300    2.998700
+  H      1.173800    0.543800   -2.670300
+  H     -0.489400    1.103400   -2.751100
+  H      0.783800    2.197800   -2.180600
+  H     -0.483900   -2.293700   -1.452300
+
+----------------------------
+CARTESIAN COORDINATES (A.U.)
+----------------------------
+  NO LB      ZA    FRAG     MASS         X           Y           Z
+   0 C     4.0000    0    12.011    0.579957    2.551697    2.857455
+   1 C     4.0000    0    12.011    0.479613    3.112001    0.405913
+   2 C     4.0000    0    12.011   -0.251334   -1.145930   -1.267250
+   3 C     4.0000    0    12.011    0.855857   -0.098833    3.727485
+   4 C     4.0000    0    12.011    0.821275    2.210979   -4.124138
+   5 N     5.0000    0    14.007   -0.341285   -2.569272   -3.208944
+   6 N     5.0000    0    14.007    0.439928    1.362493   -1.536725
+   7 S     6.0000    0    32.060   -1.135347   -2.210224    1.827932
+   8 H     1.0000    0     1.008    0.551989    4.054975    4.236955
+   9 H     1.0000    0     1.008    0.463550    5.057096   -0.229224
+  10 H     1.0000    0     1.008    2.803220   -0.763260    3.618636
+  11 H     1.0000    0     1.008    0.208626   -0.329379    5.666722
+  12 H     1.0000    0     1.008    2.218161    1.027633   -5.046136
+  13 H     1.0000    0     1.008   -0.924832    2.085124   -5.198826
+  14 H     1.0000    0     1.008    1.481167    4.153240   -4.120737
+  15 H     1.0000    0     1.008   -0.914438   -4.334465   -2.744449
+
+--------------------------------
+INTERNAL COORDINATES (ANGSTROEM)
+--------------------------------
+ C      0   0   0     0.000000000000     0.00000000     0.00000000
+ C      1   0   0     1.331810478783     0.00000000     0.00000000
+ C      2   1   0     2.451623520012    98.82807010     0.00000000
+ C      1   2   3     1.483432092928   121.11392858    14.05445210
+ C      3   2   1     2.400688614398    60.66334936   191.57225560
+ N      3   2   1     1.274885131387   147.13397306   191.15061045
+ N      2   1   3     1.383593394453   125.12609856   350.62047042
+ S      3   2   1     1.794086800485    89.99675181    16.23059954
+ H      1   2   3     1.079786817252   119.60245587   191.03864439
+ H      2   1   3     1.082817572652   120.94999953   172.01088638
+ H      4   1   2     1.090353410958   112.42758897    79.87437483
+ H      4   1   2     1.088704072038   111.56362818   201.53314145
+ H      5   3   2     1.084707081709    90.98566831   132.95332386
+ H      5   3   2     1.087028666399    94.76966241   241.08079067
+ H      5   3   2     1.085502949470   140.86259914    10.19576403
+ H      6   3   2     1.012398841104   111.13790693   184.39713404
+
+---------------------------
+INTERNAL COORDINATES (A.U.)
+---------------------------
+ C      0   0   0     0.000000000000     0.00000000     0.00000000
+ C      1   0   0     2.516757067187     0.00000000     0.00000000
+ C      2   1   0     4.632897036302    98.82807010     0.00000000
+ C      1   2   3     2.803280393903   121.11392858    14.05445210
+ C      3   2   1     4.536644014036    60.66334936   191.57225560
+ N      3   2   1     2.409183750530   147.13397306   191.15061045
+ N      2   1   3     2.614612596219   125.12609856   350.62047042
+ S      3   2   1     3.390332713401    89.99675181    16.23059954
+ H      1   2   3     2.040501367626   119.60245587   191.03864439
+ H      2   1   3     2.046228665310   120.94999953   172.01088638
+ H      4   1   2     2.060469335897   112.42758897    79.87437483
+ H      4   1   2     2.057352537037   111.56362818   201.53314145
+ H      5   3   2     2.049799319955    90.98566831   132.95332386
+ H      5   3   2     2.054186479216    94.76966241   241.08079067
+ H      5   3   2     2.051303292062   140.86259914    10.19576403
+ H      6   3   2     1.913156547986   111.13790693   184.39713404
+
+----------------------------
+SLATER BASIS SET DIM=  40
+----------------------------
+  0 C     2 shells
+ l=0 nsto= 1
+    2       1.625000000000        1.000000000000
+ l=1 nsto= 1
+    2       1.625000000000        1.000000000000
+  1 C     2 shells
+ l=0 nsto= 1
+    2       1.625000000000        1.000000000000
+ l=1 nsto= 1
+    2       1.625000000000        1.000000000000
+  2 C     2 shells
+ l=0 nsto= 1
+    2       1.625000000000        1.000000000000
+ l=1 nsto= 1
+    2       1.625000000000        1.000000000000
+  3 C     2 shells
+ l=0 nsto= 1
+    2       1.625000000000        1.000000000000
+ l=1 nsto= 1
+    2       1.625000000000        1.000000000000
+  4 C     2 shells
+ l=0 nsto= 1
+    2       1.625000000000        1.000000000000
+ l=1 nsto= 1
+    2       1.625000000000        1.000000000000
+  5 N     2 shells
+ l=0 nsto= 1
+    2       1.950000000000        1.000000000000
+ l=1 nsto= 1
+    2       1.950000000000        1.000000000000
+  6 N     2 shells
+ l=0 nsto= 1
+    2       1.950000000000        1.000000000000
+ l=1 nsto= 1
+    2       1.950000000000        1.000000000000
+  7 S     2 shells
+ l=0 nsto= 1
+    3       1.925000000000        1.000000000000
+ l=1 nsto= 1
+    3       1.925000000000        1.000000000000
+  8 H     1 shells
+ l=0 nsto= 1
+    1       1.200000000000        1.000000000000
+  9 H     1 shells
+ l=0 nsto= 1
+    1       1.200000000000        1.000000000000
+ 10 H     1 shells
+ l=0 nsto= 1
+    1       1.200000000000        1.000000000000
+ 11 H     1 shells
+ l=0 nsto= 1
+    1       1.200000000000        1.000000000000
+ 12 H     1 shells
+ l=0 nsto= 1
+    1       1.200000000000        1.000000000000
+ 13 H     1 shells
+ l=0 nsto= 1
+    1       1.200000000000        1.000000000000
+ 14 H     1 shells
+ l=0 nsto= 1
+    1       1.200000000000        1.000000000000
+ 15 H     1 shells
+ l=0 nsto= 1
+    1       1.200000000000        1.000000000000
+------------------------------------------------------------------------------
+                           ORCA NDO INTEGRAL CALCULATION
+------------------------------------------------------------------------------
+
+--------------
+NDO PARAMETERS
+--------------
+
+Gamma integral treatment              ... Mataga-Nishimoto
+Nuclear repulsuion treatment          ... Direct (ZA*ZB/RAB)
+Interaction factors:
+s-s (sigma) =    1.0000
+s-p (sigma) =    1.0000
+s-d (sigma) =    1.0000
+p-p (sigma) =    1.2670  p-p(pi) =    0.5850
+p-d (sigma) =    1.0000  p-d(pi) =    1.0000
+d-d (sigma) =    1.0000  d-d(pi) =    1.0000 d-d (delta) =    1.0000
+
+fGamma parameter for Mataga-Nishimoto gamma integrals:    1.2000
+
+--------------------------
+Parameters for Element H :
+--------------------------
+ One-electron parameters (in eV)
+  U(s)  =   -13.060000 Beta(s) =    12.000000 Neff(s) =     1.000000
+ One-center electron repulsion parameters (in eV)
+  G(s,s)=    12.850000
+--------------------------
+Parameters for Element C :
+--------------------------
+ One-electron parameters (in eV)
+  U(s)  =   -50.870766 Beta(s) =    17.000000 Neff(s) =     2.000000
+  U(p)  =   -41.599980 Beta(p) =    17.000000 Neff(p) =     2.000000 
+ One-center electron repulsion parameters (in eV)
+  G(s,s)=    11.110000
+  G(s,p)=    11.110000 G(p,p)  =    11.110000
+ Slater-Condon parameters (in eV)
+ F2(p,p)=     4.5098 G1(s,p)=    6.8977
+--------------------------
+Parameters for Element N :
+--------------------------
+ One-electron parameters (in eV)
+  U(s)  =   -69.250864 Beta(s) =    26.000000 Neff(s) =     2.000000
+  U(p)  =   -58.070401 Beta(p) =    26.000000 Neff(p) =     3.000000 
+ One-center electron repulsion parameters (in eV)
+  G(s,s)=    12.010000
+  G(s,p)=    12.010000 G(p,p)  =    12.010000
+ Slater-Condon parameters (in eV)
+ F2(p,p)=     6.4594 G1(s,p)=    8.9583
+--------------------------
+Parameters for Element S :
+--------------------------
+ One-electron parameters (in eV)
+  U(s)  =   -69.509597 Beta(s) =    15.000000 Neff(s) =     2.000000
+  U(p)  =   -60.725746 Beta(p) =    15.000000 Neff(p) =     4.000000 
+ One-center electron repulsion parameters (in eV)
+  G(s,s)=    10.090000
+  G(s,p)=    10.090000 G(p,p)  =    10.090000
+ Slater-Condon parameters (in eV)
+ F2(p,p)=     4.5377 G1(s,p)=    3.0756
+
+ Number of atoms                    ....   16
+ Number of basis functions          ....   40
+
+ Overlap integrals                  .... done
+ One electron matrix                .... done
+ Nuclear repulsion                  .... done
+ Integral list                      .... done
+ Electron-electron repulsion        .... done
+-------------------------------------------------------------------------------
+                                 ORCA SCF
+-------------------------------------------------------------------------------
+
+------------
+SCF SETTINGS
+------------
+Hamiltonian:
+ ZDO-Hamiltonian        Method          .... INDO
+
+
+General Settings:
+ Integral files         IntName         .... orca
+ Hartree-Fock type      HFTyp           .... RHF
+ Total Charge           Charge          ....    0
+ Multiplicity           Mult            ....    1
+ Number of Electrons    NEL             ....   44
+ Basis Dimension        Dim             ....   40
+ Nuclear Repulsion      ENuc            ....    193.9125623329 Eh
+
+Convergence Acceleration:
+ DIIS                   CNVDIIS         .... on
+   Start iteration      DIISMaxIt       ....    12
+   Startup error        DIISStart       ....  0.200000
+   # of expansion vecs  DIISMaxEq       ....     5
+   Bias factor          DIISBfac        ....   1.050
+   Max. coefficient     DIISMaxC        ....  10.000
+ Newton-Raphson         CNVNR           .... off
+ SOSCF                  CNVSOSCF        .... on
+   Start iteration      SOSCFMaxIt      ....   150
+   Startup grad/error   SOSCFStart      ....  0.003300
+ Level Shifting         CNVShift        .... on
+   Level shift para.    LevelShift      ....    0.2500
+   Turn off err/grad.   ShiftErr        ....    0.0010
+ Zerner damping         CNVZerner       .... off
+ Static damping         CNVDamp         .... on
+   Fraction old density DampFac         ....    0.7000
+   Max. Damping (<1)    DampMax         ....    0.9800
+   Min. Damping (>=0)   DampMin         ....    0.0000
+   Turn off err/grad.   DampErr         ....    0.1000
+ Fernandez-Rico         CNVRico         .... off
+
+SCF Procedure:
+ Maximum # iterations   MaxIter         ....   125
+ SCF integral mode      SCFMode         .... Conventional
+ Integral Buffer length BufferLength    .... 1048576
+ Integral index format  IndFormat       ....     0
+ Integral value format  ValFormat       ....     0
+ Integral Storage       Thresh          ....  2.500e-11 Eh
+
+Convergence Tolerance:
+ Convergence Check Mode ConvCheckMode   .... Total+1el-Energy
+ Convergence forced     ConvForced      .... 1
+ Energy Change          TolE            ....  1.000e-08 Eh
+ 1-El. energy change                    ....  1.000e-05 Eh
+ Orbital Gradient       TolG            ....  1.000e-05
+ Orbital Rotation angle TolX            ....  1.000e-05
+ DIIS Error             TolErr          ....  5.000e-07
+
+
+Diagonalization of the overlap matrix:
+Smallest eigenvalue                        ... 1.618e-01
+Time for diagonalization                   ...    0.000 sec
+Threshold for overlap eigenvalues          ... 1.000e-08
+Number of eigenvalues below threshold      ... 0
+Time for construction of square roots      ...    0.000 sec
+Total time needed                          ...    0.000 sec
+
+-------------------------------
+INITIAL GUESS: EXTENDED HUECKEL
+-------------------------------
+EHT matrix was read from disk
+EHT matrix was diagonalized
+Initial density was built
+                      ------------------
+                      INITIAL GUESS DONE
+                      ------------------
+
+ InCore treatment chosen:
+   Memory dedicated               ...    1024 MB
+   Memory needed                  ...      0 MB
+   Number of tiny    integrals    ...       0
+   Number of small   integrals    ...       0
+   Number of regular integrals    ...     868
+
+--------------
+SCF ITERATIONS
+--------------
+ITER       Energy         Delta-E        Max-DP      RMS-DP      [F,P]     Damp
+  0     -3.8645137744   0.000000000000 0.04508402  0.00278982  0.0916338 0.7000
+  1     -3.8814580564  -0.016944282042 0.04796131  0.00272363  0.0670779 0.7000
+                               ***Turning on DIIS***
+  2     -3.8940894013  -0.012631344828 0.12700597  0.00706246  0.0463537 0.0000
+  3     -3.9431988847  -0.049109483446 0.01573182  0.00137854  0.0180738 0.0000
+  4     -3.9216853258   0.021513558882 0.01112495  0.00093698  0.0062811 0.0000
+  5     -3.9240003475  -0.002315021640 0.00737688  0.00057969  0.0040883 0.0000
+                      *** Initiating the SOSCF procedure ***
+                           *** Shutting down DIIS ***
+                      *** Re-Reading the Fockian *** 
+                      *** Removing any level shift *** 
+ITER      Energy       Delta-E        Grad      Rot      Max-DP    RMS-DP
+  6     -3.92510332  -0.0011029676  0.002801  0.002801  0.005099  0.000379
+  7     -3.92592817  -0.0008248556  0.000947  0.002623  0.003051  0.000209
+  8     -3.92594453  -0.0000163584  0.000348  0.002000  0.002309  0.000172
+  9     -3.92594906  -0.0000045328  0.000082  0.000181  0.000278  0.000017
+ 10     -3.92594917  -0.0000001070  0.000018  0.000055  0.000060  0.000006
+ 11     -3.92594918  -0.0000000143  0.000006  0.000028  0.000042  0.000003
+                 **** Energy Check signals convergence ****
+              ***Rediagonalizing the Fockian in SOSCF/NRSCF***
+
+               *****************************************************
+               *                     SUCCESS                       *
+               *           SCF CONVERGED AFTER  12 CYCLES          *
+               *****************************************************
+
+
+----------------
+TOTAL SCF ENERGY
+----------------
+
+Total Energy       :           -3.92594919 Eh            -106.83051 eV
+
+Components:
+Nuclear Repulsion  :          193.91256233 Eh            5276.62908 eV
+Electronic Energy  :         -197.83851152 Eh           -5383.45959 eV
+One Electron Energy:         -362.07228503 Eh           -9852.48777 eV
+Two Electron Energy:          164.23377351 Eh            4469.02818 eV
+
+
+---------------
+SCF CONVERGENCE
+---------------
+
+  Last Energy change         ...   -2.3994e-09  Tolerance :   1.0000e-08
+  Last MAX-Density change    ...    1.2476e-05  Tolerance :   1.0000e-07
+  Last RMS-Density change    ...    7.3741e-07  Tolerance :   5.0000e-09
+  Last Orbital Gradient      ...    1.6187e-06  Tolerance :   1.0000e-05
+  Last Orbital Rotation      ...    7.1353e-06  Tolerance :   1.0000e-05
+
+             **** THE GBW FILE WAS UPDATED (orca.gbw) ****
+             **** DENSITY FILE WAS UPDATED (orca.scfp) ****
+             **** ENERGY FILE WAS UPDATED (orca.en.tmp) ****
+             **** THE GBW FILE WAS UPDATED (orca.gbw) ****
+             **** DENSITY FILE WAS UPDATED (orca.scfp) ****
+----------------
+ORBITAL ENERGIES
+----------------
+
+  NO   OCC          E(Eh)            E(eV) 
+   0   2.0000      -1.711795       -46.5803 
+   1   2.0000      -1.439103       -39.1600 
+   2   2.0000      -1.364774       -37.1374 
+   3   2.0000      -1.131263       -30.7832 
+   4   2.0000      -1.109706       -30.1966 
+   5   2.0000      -0.966232       -26.2925 
+   6   2.0000      -0.888210       -24.1694 
+   7   2.0000      -0.776914       -21.1409 
+   8   2.0000      -0.723198       -19.6792 
+   9   2.0000      -0.678855       -18.4726 
+  10   2.0000      -0.670196       -18.2370 
+  11   2.0000      -0.634827       -17.2745 
+  12   2.0000      -0.626697       -17.0533 
+  13   2.0000      -0.561092       -15.2681 
+  14   2.0000      -0.539644       -14.6845 
+  15   2.0000      -0.509412       -13.8618 
+  16   2.0000      -0.501729       -13.6527 
+  17   2.0000      -0.480869       -13.0851 
+  18   2.0000      -0.408454       -11.1146 
+  19   2.0000      -0.390352       -10.6220 
+  20   2.0000      -0.379043       -10.3143 
+  21   2.0000      -0.310004        -8.4356 
+  22   0.0000       0.025225         0.6864 
+  23   0.0000       0.051002         1.3878 
+  24   0.0000       0.077519         2.1094 
+  25   0.0000       0.093292         2.5386 
+  26   0.0000       0.120286         3.2731 
+  27   0.0000       0.148997         4.0544 
+  28   0.0000       0.183984         5.0065 
+  29   0.0000       0.219268         5.9666 
+  30   0.0000       0.220557         6.0017 
+  31   0.0000       0.244135         6.6433 
+  32   0.0000       0.251447         6.8422 
+  33   0.0000       0.251884         6.8541 
+  34   0.0000       0.284658         7.7459 
+  35   0.0000       0.311533         8.4772 
+  36   0.0000       0.362656         9.8684 
+  37   0.0000       0.378257        10.2929 
+  38   0.0000       0.446145        12.1402 
+  39   0.0000       0.500043        13.6069 
+
+                    ********************************
+                    * MULLIKEN POPULATION ANALYSIS *
+                    ********************************
+
+-----------------------
+MULLIKEN ATOMIC CHARGES
+-----------------------
+   0 C :   -0.100889
+   1 C :    0.046136
+   2 C :    0.444802
+   3 C :   -0.029986
+   4 C :   -0.038691
+   5 N :   -0.581521
+   6 N :   -0.310760
+   7 S :   -0.154163
+   8 H :    0.079051
+   9 H :    0.085452
+  10 H :    0.087984
+  11 H :    0.071626
+  12 H :    0.081918
+  13 H :    0.079423
+  14 H :    0.058456
+  15 H :    0.181160
+Sum of atomic charges:    0.0000000
+
+--------------------------------
+MULLIKEN REDUCED ORBITAL CHARGES
+--------------------------------
+  0 C s       :     1.269100  s :     1.269100
+      pz      :     0.869253  p :     2.831789
+      px      :     1.069722
+      py      :     0.892814
+  1 C s       :     1.225389  s :     1.225389
+      pz      :     0.842942  p :     2.728475
+      px      :     1.022139
+      py      :     0.863394
+  2 C s       :     1.135638  s :     1.135638
+      pz      :     0.833951  p :     2.419560
+      px      :     0.784895
+      py      :     0.800714
+  3 C s       :     1.273715  s :     1.273715
+      pz      :     0.919342  p :     2.756271
+      px      :     0.920204
+      py      :     0.916725
+  4 C s       :     1.262221  s :     1.262221
+      pz      :     0.847039  p :     2.776469
+      px      :     0.980872
+      py      :     0.948558
+  5 N s       :     1.785728  s :     1.785728
+      pz      :     1.321902  p :     3.795793
+      px      :     1.362425
+      py      :     1.111465
+  6 N s       :     1.387627  s :     1.387627
+      pz      :     1.096513  p :     3.923133
+      px      :     1.744709
+      py      :     1.081911
+  7 S s       :     1.857822  s :     1.857822
+      pz      :     1.079826  p :     4.296341
+      px      :     1.638745
+      py      :     1.577770
+  8 H s       :     0.920949  s :     0.920949
+  9 H s       :     0.914548  s :     0.914548
+ 10 H s       :     0.912016  s :     0.912016
+ 11 H s       :     0.928374  s :     0.928374
+ 12 H s       :     0.918082  s :     0.918082
+ 13 H s       :     0.920577  s :     0.920577
+ 14 H s       :     0.941544  s :     0.941544
+ 15 H s       :     0.818840  s :     0.818840
+
+
+                     *******************************
+                     * LOEWDIN POPULATION ANALYSIS *
+                     *******************************
+
+----------------------
+LOEWDIN ATOMIC CHARGES
+----------------------
+   0 C :   -0.077531
+   1 C :    0.043960
+   2 C :    0.338202
+   3 C :    0.036941
+   4 C :    0.038762
+   5 N :   -0.481973
+   6 N :   -0.161859
+   7 S :   -0.116276
+   8 H :    0.038550
+   9 H :    0.042185
+  10 H :    0.046532
+  11 H :    0.031189
+  12 H :    0.039403
+  13 H :    0.037565
+  14 H :    0.021986
+  15 H :    0.122363
+
+-------------------------------
+LOEWDIN REDUCED ORBITAL CHARGES
+-------------------------------
+  0 C s       :     1.083454  s :     1.083454
+      pz      :     0.969120  p :     2.994077
+      px      :     1.070381
+      py      :     0.954576
+  1 C s       :     1.070364  s :     1.070364
+      pz      :     0.939422  p :     2.885676
+      px      :     1.025885
+      py      :     0.920369
+  2 C s       :     1.069604  s :     1.069604
+      pz      :     0.907142  p :     2.592194
+      px      :     0.805069
+      py      :     0.879984
+  3 C s       :     1.068604  s :     1.068604
+      pz      :     0.956826  p :     2.894456
+      px      :     0.963593
+      py      :     0.974037
+  4 C s       :     1.050927  s :     1.050927
+      pz      :     0.898590  p :     2.910310
+      px      :     1.021229
+      py      :     0.990492
+  5 N s       :     1.585320  s :     1.585320
+      pz      :     1.395346  p :     3.896654
+      px      :     1.361159
+      py      :     1.140148
+  6 N s       :     1.198711  s :     1.198711
+      pz      :     1.115617  p :     3.963147
+      px      :     1.732613
+      py      :     1.114918
+  7 S s       :     1.774749  s :     1.774749
+      pz      :     1.100078  p :     4.341527
+      px      :     1.651066
+      py      :     1.590382
+  8 H s       :     0.961450  s :     0.961450
+  9 H s       :     0.957815  s :     0.957815
+ 10 H s       :     0.953468  s :     0.953468
+ 11 H s       :     0.968811  s :     0.968811
+ 12 H s       :     0.960597  s :     0.960597
+ 13 H s       :     0.962435  s :     0.962435
+ 14 H s       :     0.978014  s :     0.978014
+ 15 H s       :     0.877637  s :     0.877637
+
+
+                      *****************************
+                      * MAYER POPULATION ANALYSIS *
+                      *****************************
+
+  NA   - Mulliken gross atomic population
+  ZA   - Total nuclear charge
+  QA   - Mulliken gross atomic charge
+  VA   - Mayer's total valence
+  BVA  - Mayer's bonded valence
+  FA   - Mayer's free valence
+
+  ATOM       NA         ZA         QA         VA         BVA        FA
+  0 C      4.1009     4.0000    -0.1009     3.8875     3.8875     0.0000
+  1 C      3.9539     4.0000     0.0461     3.8704     3.8704     0.0000
+  2 C      3.5552     4.0000     0.4448     3.8596     3.8596     0.0000
+  3 C      4.0300     4.0000    -0.0300     3.8834     3.8834     0.0000
+  4 C      4.0387     4.0000    -0.0387     3.8679     3.8679     0.0000
+  5 N      5.5815     5.0000    -0.5815     2.8245     2.8245     0.0000
+  6 N      5.3108     5.0000    -0.3108     3.2117     3.2117     0.0000
+  7 S      6.1542     6.0000    -0.1542     2.0160     2.0160     0.0000
+  8 H      0.9209     1.0000     0.0791     0.9938     0.9938     0.0000
+  9 H      0.9145     1.0000     0.0855     0.9927     0.9927    -0.0000
+ 10 H      0.9120     1.0000     0.0880     0.9923     0.9923    -0.0000
+ 11 H      0.9284     1.0000     0.0716     0.9949     0.9949     0.0000
+ 12 H      0.9181     1.0000     0.0819     0.9933     0.9933     0.0000
+ 13 H      0.9206     1.0000     0.0794     0.9937     0.9937     0.0000
+ 14 H      0.9415     1.0000     0.0585     0.9966     0.9966     0.0000
+ 15 H      0.8188     1.0000     0.1812     0.9672     0.9672     0.0000
+
+  Mayer bond orders larger than 0.100000
+B(  0-C ,  1-C ) :   1.8398 B(  0-C ,  3-C ) :   0.9738 B(  0-C ,  8-H ) :   0.9460 
+B(  1-C ,  6-N ) :   1.0023 B(  1-C ,  9-H ) :   0.9495 B(  2-C ,  5-N ) :   1.7400 
+B(  2-C ,  6-N ) :   1.0920 B(  2-C ,  7-S ) :   0.9826 B(  3-C ,  7-S ) :   0.9553 
+B(  3-C , 10-H ) :   0.9567 B(  3-C , 11-H ) :   0.9627 B(  4-C ,  6-N ) :   0.9360 
+B(  4-C , 12-H ) :   0.9655 B(  4-C , 13-H ) :   0.9672 B(  4-C , 14-H ) :   0.9627 
+B(  5-N , 15-H ) :   0.9475 
+
+-------
+TIMINGS
+-------
+
+Total SCF time: 0 days 0 hours 0 min 0 sec 
+
+Total time                  ....       0.167 sec
+Sum of individual times     ....       0.011 sec  (  6.4%)
+
+Fock matrix formation       ....       0.006 sec  (  3.6%)
+Diagonalization             ....       0.001 sec  (  0.6%)
+Density matrix formation    ....       0.000 sec  (  0.1%)
+Population analysis         ....       0.002 sec  (  1.4%)
+Initial guess               ....       0.000 sec  (  0.1%)
+Orbital Transformation      ....       0.000 sec  (  0.0%)
+Orbital Orthonormalization  ....       0.000 sec  (  0.0%)
+DIIS solution               ....       0.000 sec  (  0.3%)
+SOSCF solution              ....       0.001 sec  (  0.3%)
+------------------------------------------------------------------------------
+                         ORCA CIS CALCULATION
+------------------------------------------------------------------------------
+
+Input orbitals are from        ... orca.gbw
+CI-vector output               ... orca.cis
+Tamm-Dancoff approximation     ... operative
+CIS-Integral strategy          ... AO-integrals
+Integral handling              ... AO integral Conventional
+Reference state                ... RHF
+Generation of triplets         ... off
+Follow IRoot                   ... off
+Number of operators            ... 1
+Orbital ranges used for CIS calculation:
+ Operator 0:  Orbitals   0... 21  to  22... 39
+XAS localization array:
+ Operator 0:  Orbitals  -1... -1
+-------------------
+XC-INTEGRATION GRID
+-------------------
+
+General Integration Accuracy     IntAcc      ...  3.670
+Radial Grid Type                 RadialGrid  ... Gauss-Chebyshev
+Angular Grid (max. acc.)         AngularGrid ... Lebedev-50
+Angular grid pruning method      GridPruning ... 3 (G Style)
+Weight generation scheme         WeightScheme... Becke
+Basis function cutoff            BFCut       ...    1.0000e-11
+Integration weight cutoff        WCut        ...    1.0000e-14
+Grids for H and He will be reduced by one unit
+
+# of grid points (after initial pruning)     ...   9300 (   0.0 sec)
+# of grid points (after weights+screening)   ...   8679 (   0.0 sec)
+nearest neighbour list constructed           ...    0.0 sec
+Grid point re-assignment to atoms done       ...    0.0 sec
+Grid point division into batches done        ...    0.0 sec
+Reduced shell lists constructed in    0.0 sec
+
+Total number of grid points                  ...     8679
+Total number of batches                      ...      142
+Average number of points per batch           ...       61
+Average number of grid points per atom       ...      542
+Average number of shells per batch           ...    23.44 (97.67%)
+Average number of basis functions per batch  ...    38.99 (97.48%)
+Average number of large shells per batch     ...    20.57 (87.77%)
+Average number of large basis fcns per batch ...    34.55 (88.59%)
+Maximum spatial batch extension              ...  22.67, 15.47, 16.44 au
+Average spatial batch extension              ...   4.78,  4.35,  4.48 au
+
+
+
+------------------------
+DAVIDSON-DIAGONALIZATION
+------------------------
+
+Dimension of the eigenvalue problem            ...    396
+Number of roots to be determined               ...     10
+Maximum size of the expansion space            ...    100
+Maximum number of iterations                   ...    100
+Convergence tolerance for the residual         ...    2.500e-07
+Convergence tolerance for the energies         ...    2.500e-07
+Orthogonality tolerance                        ...    1.000e-14
+Level Shift                                    ...    0.000e+00
+Constructing the preconditioner                ... o.k.
+Building the initial guess                     ... o.k.
+Number of trial vectors determined             ...    100
+
+
+                       ****Iteration    0****
+
+   Memory handling for direct AO based CIS:
+   Memory per vector needed      ...     1 MB
+   Memory needed                 ...     1 MB
+   Memory available              ...   512 MB
+   Number of vectors per batch   ...   512
+   Number of batches             ...     1
+   Time for densities:     0.001
+   Time for J+K (Conventional):     0.004
+   Time for Sigma-Completion:     0.001
+   Size of expansion space: 30
+   Lowest Energy          :     0.176940584582
+   Maximum Energy change  :     0.287423890840 (vector 9)
+   Maximum residual norm  :     0.006232016220
+
+                       ****Iteration    1****
+   Time for densities:     0.000
+   Time for J+K (Conventional):     0.003
+   Time for Sigma-Completion:     0.000
+   Size of expansion space: 40
+   Lowest Energy          :     0.175046568285
+   Maximum Energy change  :     0.012550410477 (vector 3)
+   Maximum residual norm  :     0.000449572319
+
+                       ****Iteration    2****
+   Time for densities:     0.000
+   Time for J+K (Conventional):     0.004
+   Time for Sigma-Completion:     0.000
+   Size of expansion space: 50
+   Lowest Energy          :     0.174954971691
+   Maximum Energy change  :     0.001738600566 (vector 9)
+   Maximum residual norm  :     0.000230424578
+
+                       ****Iteration    3****
+   Time for densities:     0.000
+   Time for J+K (Conventional):     0.004
+   Time for Sigma-Completion:     0.000
+   Size of expansion space: 60
+   Lowest Energy          :     0.174952687378
+   Maximum Energy change  :     0.000748333636 (vector 9)
+   Maximum residual norm  :     0.000021264129
+
+                       ****Iteration    4****
+   Time for densities:     0.000
+   Time for J+K (Conventional):     0.004
+   Time for Sigma-Completion:     0.000
+   Size of expansion space: 70
+   Lowest Energy          :     0.174952634137
+   Maximum Energy change  :     0.000050329766 (vector 9)
+   Maximum residual norm  :     0.000001551885
+
+                       ****Iteration    5****
+   Time for densities:     0.000
+   Time for J+K (Conventional):     0.004
+   Time for Sigma-Completion:     0.000
+   Size of expansion space: 80
+   Lowest Energy          :     0.174952632936
+   Maximum Energy change  :     0.000003637846 (vector 9)
+   Maximum residual norm  :     0.000000082010
+
+      *** CONVERGENCE OF RESIDUAL NORM REACHED ***
+
+Storing the converged CI vectors               ... orca.cis1
+
+                 *** DAVIDSON DONE ***
+
+Total time for solving the CIS problem:     0.082sec
+
+-----------------------------
+CIS-EXCITED STATES (SINGLETS)
+-----------------------------
+
+the weight of the individual excitations are printed if larger than 1.0e-02
+
+STATE  1:  E=   0.174953 au      4.761 eV    38397.7 cm**-1
+    18a ->  22a  :     0.027765 (c= -0.16662746)
+    18a ->  23a  :     0.013489 (c=  0.11614281)
+    19a ->  22a  :     0.261102 (c= -0.51098179)
+    19a ->  23a  :     0.099591 (c=  0.31558002)
+    20a ->  22a  :     0.297726 (c=  0.54564305)
+    20a ->  23a  :     0.127574 (c= -0.35717549)
+    21a ->  22a  :     0.142209 (c= -0.37710578)
+
+STATE  2:  E=   0.177736 au      4.836 eV    39008.6 cm**-1
+    19a ->  22a  :     0.046273 (c= -0.21511115)
+    19a ->  23a  :     0.031166 (c=  0.17653981)
+    20a ->  22a  :     0.065256 (c=  0.25545286)
+    20a ->  23a  :     0.016310 (c= -0.12770911)
+    21a ->  22a  :     0.807108 (c=  0.89839190)
+
+STATE  3:  E=   0.205033 au      5.579 eV    44999.5 cm**-1
+    20a ->  24a  :     0.015724 (c= -0.12539519)
+    21a ->  23a  :     0.549020 (c= -0.74095861)
+    21a ->  24a  :     0.384325 (c=  0.61993980)
+
+STATE  4:  E=   0.209657 au      5.705 eV    46014.5 cm**-1
+    21a ->  23a  :     0.391026 (c=  0.62532086)
+    21a ->  24a  :     0.492116 (c=  0.70150987)
+    21a ->  25a  :     0.014043 (c= -0.11850351)
+    21a ->  26a  :     0.040080 (c= -0.20019959)
+
+STATE  5:  E=   0.221894 au      6.038 eV    48700.1 cm**-1
+    19a ->  24a  :     0.021935 (c=  0.14810455)
+    20a ->  24a  :     0.026430 (c=  0.16257236)
+    21a ->  23a  :     0.016137 (c= -0.12703108)
+    21a ->  24a  :     0.020648 (c= -0.14369337)
+    21a ->  25a  :     0.642692 (c= -0.80168058)
+    21a ->  26a  :     0.208766 (c= -0.45690914)
+    21a ->  27a  :     0.019846 (c= -0.14087591)
+
+STATE  6:  E=   0.243635 au      6.630 eV    53471.7 cm**-1
+    18a ->  24a  :     0.027318 (c= -0.16528141)
+    19a ->  24a  :     0.032582 (c= -0.18050500)
+    20a ->  23a  :     0.015753 (c=  0.12551238)
+    20a ->  24a  :     0.161883 (c= -0.40234640)
+    21a ->  25a  :     0.228857 (c= -0.47839002)
+    21a ->  26a  :     0.426177 (c=  0.65282256)
+    21a ->  28a  :     0.029766 (c= -0.17252896)
+
+STATE  7:  E=   0.248100 au      6.751 eV    54451.7 cm**-1
+    18a ->  22a  :     0.017187 (c=  0.13110006)
+    18a ->  24a  :     0.049659 (c= -0.22284401)
+    19a ->  22a  :     0.174364 (c=  0.41756898)
+    19a ->  23a  :     0.029018 (c= -0.17034748)
+    20a ->  22a  :     0.219010 (c=  0.46798501)
+    20a ->  24a  :     0.357454 (c= -0.59787430)
+    20a ->  26a  :     0.026878 (c= -0.16394568)
+    21a ->  24a  :     0.021107 (c= -0.14528147)
+    21a ->  26a  :     0.058097 (c= -0.24103347)
+
+STATE  8:  E=   0.250111 au      6.806 eV    54893.0 cm**-1
+    18a ->  22a  :     0.043945 (c=  0.20963171)
+    18a ->  23a  :     0.023189 (c= -0.15227914)
+    18a ->  24a  :     0.085853 (c=  0.29300622)
+    19a ->  22a  :     0.130322 (c=  0.36100109)
+    19a ->  23a  :     0.047141 (c= -0.21711935)
+    19a ->  24a  :     0.094127 (c=  0.30680180)
+    19a ->  26a  :     0.011557 (c=  0.10750321)
+    20a ->  22a  :     0.161253 (c=  0.40156301)
+    20a ->  23a  :     0.044406 (c= -0.21072849)
+    20a ->  24a  :     0.095451 (c=  0.30895126)
+    20a ->  26a  :     0.012046 (c=  0.10975612)
+    21a ->  24a  :     0.025223 (c=  0.15881844)
+    21a ->  25a  :     0.029244 (c= -0.17100812)
+    21a ->  26a  :     0.150241 (c=  0.38760956)
+
+STATE  9:  E=   0.269848 au      7.343 eV    59224.8 cm**-1
+    18a ->  22a  :     0.635839 (c=  0.79739536)
+    18a ->  25a  :     0.019609 (c=  0.14003198)
+    19a ->  22a  :     0.027426 (c= -0.16560726)
+    19a ->  23a  :     0.027242 (c=  0.16505056)
+    19a ->  24a  :     0.093048 (c= -0.30503698)
+    20a ->  22a  :     0.014458 (c=  0.12024268)
+    20a ->  23a  :     0.036249 (c=  0.19039226)
+    20a ->  25a  :     0.055428 (c=  0.23543193)
+
+STATE 10:  E=   0.277027 au      7.538 eV    60800.5 cm**-1
+    18a ->  22a  :     0.171599 (c=  0.41424567)
+    18a ->  24a  :     0.010269 (c=  0.10133597)
+    18a ->  25a  :     0.032374 (c= -0.17992747)
+    19a ->  22a  :     0.120693 (c= -0.34740904)
+    19a ->  23a  :     0.089798 (c= -0.29966266)
+    19a ->  24a  :     0.108136 (c=  0.32883974)
+    20a ->  22a  :     0.062910 (c= -0.25081799)
+    20a ->  23a  :     0.061825 (c= -0.24864656)
+    20a ->  24a  :     0.080778 (c= -0.28421531)
+    20a ->  25a  :     0.158442 (c= -0.39804752)
+
+
+------------------------------------------
+NATURAL TRANSITION ORBITALS FOR STATE    1
+------------------------------------------
+
+Making the (pseudo)densities                       ... done
+Solving eigenvalue problem for the occupied space  ... done
+Solving eigenvalue problem for the virtual space   ... done
+Natural Transition Orbitals were saved in orca.s1.nto
+Threshold for printing occupation numbers 0.001000
+
+ E=   0.174953 au      4.761 eV    38397.7 cm**-1
+    21a ->  22a  : n=  0.96927076
+    20a ->  23a  : n=  0.02829265
+
+
+------------------------------------------
+NATURAL TRANSITION ORBITALS FOR STATE    2
+------------------------------------------
+
+Making the (pseudo)densities                       ... done
+Solving eigenvalue problem for the occupied space  ... done
+Solving eigenvalue problem for the virtual space   ... done
+Natural Transition Orbitals were saved in orca.s2.nto
+Threshold for printing occupation numbers 0.001000
+
+ E=   0.177736 au      4.836 eV    39008.6 cm**-1
+    21a ->  22a  : n=  0.93520990
+    20a ->  23a  : n=  0.04977301
+    19a ->  24a  : n=  0.00678287
+    18a ->  25a  : n=  0.00346953
+    17a ->  26a  : n=  0.00161336
+    16a ->  27a  : n=  0.00106829
+
+
+------------------------------------------
+NATURAL TRANSITION ORBITALS FOR STATE    3
+------------------------------------------
+
+Making the (pseudo)densities                       ... done
+Solving eigenvalue problem for the occupied space  ... done
+Solving eigenvalue problem for the virtual space   ... done
+Natural Transition Orbitals were saved in orca.s3.nto
+Threshold for printing occupation numbers 0.001000
+
+ E=   0.205033 au      5.579 eV    44999.5 cm**-1
+    21a ->  22a  : n=  0.96133901
+    20a ->  23a  : n=  0.01972261
+    19a ->  24a  : n=  0.00852944
+    18a ->  25a  : n=  0.00442462
+    17a ->  26a  : n=  0.00271194
+
+
+------------------------------------------
+NATURAL TRANSITION ORBITALS FOR STATE    4
+------------------------------------------
+
+Making the (pseudo)densities                       ... done
+Solving eigenvalue problem for the occupied space  ... done
+Solving eigenvalue problem for the virtual space   ... done
+Natural Transition Orbitals were saved in orca.s4.nto
+Threshold for printing occupation numbers 0.001000
+
+ E=   0.209657 au      5.705 eV    46014.5 cm**-1
+    21a ->  22a  : n=  0.95474576
+    20a ->  23a  : n=  0.03173284
+    19a ->  24a  : n=  0.00490882
+    18a ->  25a  : n=  0.00304585
+    17a ->  26a  : n=  0.00144870
+    16a ->  27a  : n=  0.00128430
+
+
+------------------------------------------
+NATURAL TRANSITION ORBITALS FOR STATE    5
+------------------------------------------
+
+Making the (pseudo)densities                       ... done
+Solving eigenvalue problem for the occupied space  ... done
+Solving eigenvalue problem for the virtual space   ... done
+Natural Transition Orbitals were saved in orca.s5.nto
+Threshold for printing occupation numbers 0.001000
+
+ E=   0.221894 au      6.038 eV    48700.1 cm**-1
+    21a ->  22a  : n=  0.92942690
+    20a ->  23a  : n=  0.06681954
+    19a ->  24a  : n=  0.00176444
+
+
+------------------------------------------
+NATURAL TRANSITION ORBITALS FOR STATE    6
+------------------------------------------
+
+Making the (pseudo)densities                       ... done
+Solving eigenvalue problem for the occupied space  ... done
+Solving eigenvalue problem for the virtual space   ... done
+Natural Transition Orbitals were saved in orca.s6.nto
+Threshold for printing occupation numbers 0.001000
+
+ E=   0.243635 au      6.630 eV    53471.7 cm**-1
+    21a ->  22a  : n=  0.71455141
+    20a ->  23a  : n=  0.27626291
+    19a ->  24a  : n=  0.00580409
+    18a ->  25a  : n=  0.00147460
+
+
+------------------------------------------
+NATURAL TRANSITION ORBITALS FOR STATE    7
+------------------------------------------
+
+Making the (pseudo)densities                       ... done
+Solving eigenvalue problem for the occupied space  ... done
+Solving eigenvalue problem for the virtual space   ... done
+Natural Transition Orbitals were saved in orca.s7.nto
+Threshold for printing occupation numbers 0.001000
+
+ E=   0.248100 au      6.751 eV    54451.7 cm**-1
+    21a ->  22a  : n=  0.77503052
+    20a ->  23a  : n=  0.15729511
+    19a ->  24a  : n=  0.05772800
+    18a ->  25a  : n=  0.00494053
+    17a ->  26a  : n=  0.00310338
+
+
+------------------------------------------
+NATURAL TRANSITION ORBITALS FOR STATE    8
+------------------------------------------
+
+Making the (pseudo)densities                       ... done
+Solving eigenvalue problem for the occupied space  ... done
+Solving eigenvalue problem for the virtual space   ... done
+Natural Transition Orbitals were saved in orca.s8.nto
+Threshold for printing occupation numbers 0.001000
+
+ E=   0.250111 au      6.806 eV    54893.0 cm**-1
+    21a ->  22a  : n=  0.79078456
+    20a ->  23a  : n=  0.18811099
+    19a ->  24a  : n=  0.01373953
+    18a ->  25a  : n=  0.00428598
+
+
+------------------------------------------
+NATURAL TRANSITION ORBITALS FOR STATE    9
+------------------------------------------
+
+Making the (pseudo)densities                       ... done
+Solving eigenvalue problem for the occupied space  ... done
+Solving eigenvalue problem for the virtual space   ... done
+Natural Transition Orbitals were saved in orca.s9.nto
+Threshold for printing occupation numbers 0.001000
+
+ E=   0.269848 au      7.343 eV    59224.8 cm**-1
+    21a ->  22a  : n=  0.74340000
+    20a ->  23a  : n=  0.14709620
+    19a ->  24a  : n=  0.09230776
+    18a ->  25a  : n=  0.00961540
+    17a ->  26a  : n=  0.00315962
+    16a ->  27a  : n=  0.00243791
+
+
+------------------------------------------
+NATURAL TRANSITION ORBITALS FOR STATE   10
+------------------------------------------
+
+Making the (pseudo)densities                       ... done
+Solving eigenvalue problem for the occupied space  ... done
+Solving eigenvalue problem for the virtual space   ... done
+Natural Transition Orbitals were saved in orca.s10.nto
+Threshold for printing occupation numbers 0.001000
+
+ E=   0.277027 au      7.538 eV    60800.5 cm**-1
+    21a ->  22a  : n=  0.51263193
+    20a ->  23a  : n=  0.27304195
+    19a ->  24a  : n=  0.20182503
+    18a ->  25a  : n=  0.00642987
+    17a ->  26a  : n=  0.00222745
+    16a ->  27a  : n=  0.00138829
+
+
+----------------------
+CIS-EXCITATION SPECTRA
+----------------------
+
+Center of mass = (  0.0060,  0.0227,  0.0585)
+Calculating the Dipole integrals                  ... done
+Transforming integrals                            ... done
+Calculating the Linear Momentum integrals         ... done
+Transforming integrals                            ... done
+Calculating angular momentum integrals            ... done
+Transforming integrals                            ... done
+
+-----------------------------------------------------------------------------
+         ABSORPTION SPECTRUM VIA TRANSITION ELECTRIC DIPOLE MOMENTS
+-----------------------------------------------------------------------------
+State   Energy    Wavelength  fosc         T2        TX        TY        TZ  
+        (cm-1)      (nm)                 (au**2)    (au)      (au)      (au) 
+-----------------------------------------------------------------------------
+   1   38397.7    260.4   0.034327031   0.29431   0.18041   0.22089   0.46149
+   2   39008.6    256.4   0.174656418   1.47401  -0.13013  -0.57488  -1.06141
+   3   44999.5    222.2   0.042521571   0.31108  -0.05513  -0.27237   0.48359
+   4   46014.5    217.3   0.049610897   0.35494   0.00143   0.41590  -0.42658
+   5   48700.1    205.3   0.006198343   0.04190  -0.04980  -0.17501   0.09377
+   6   53471.7    187.0   0.016258307   0.10010  -0.13162  -0.13509  -0.25402
+   7   54451.7    183.6   0.010564721   0.06387  -0.00281   0.22849   0.10797
+   8   54893.0    182.2   0.018810188   0.11281  -0.00378   0.21277   0.25985
+   9   59224.8    168.8   0.041711748   0.23186  -0.05188  -0.44896   0.16616
+  10   60800.5    164.5   0.063820747   0.34557  -0.00727  -0.56043  -0.17730
+
+-----------------------------------------------------------------------------
+         ABSORPTION SPECTRUM VIA TRANSITION VELOCITY DIPOLE MOMENTS
+-----------------------------------------------------------------------------
+State   Energy    Wavelength   fosc        P2         PX        PY        PZ  
+        (cm-1)      (nm)                 (au**2)     (au)      (au)      (au) 
+-----------------------------------------------------------------------------
+   1   38397.7    260.4   0.080413150   0.02110  -0.12445  -0.00681  -0.07463
+   2   39008.6    256.4   0.083385403   0.02223  -0.01171   0.09973   0.11021
+   3   44999.5    222.2   0.039757159   0.01223  -0.03079   0.05405  -0.09142
+   4   46014.5    217.3   0.037508332   0.01180  -0.03110  -0.06188   0.08366
+   5   48700.1    205.3   0.010157404   0.00338   0.02246   0.04745  -0.02501
+   6   53471.7    187.0   0.021370692   0.00781   0.06499   0.02570   0.05409
+   7   54451.7    183.6   0.005378568   0.00200   0.01572  -0.04185  -0.00171
+   8   54893.0    182.2   0.008367368   0.00314   0.01166  -0.03280  -0.04390
+   9   59224.8    168.8   0.042324536   0.01713   0.01101   0.11491  -0.06170
+  10   60800.5    164.5   0.044848440   0.01864  -0.00508   0.12471   0.05529
+
+-------------------------------------------------------------------
+                             CD SPECTRUM
+-------------------------------------------------------------------
+State  Energy     Wavelength     R         MX        MY        MZ   
+       (cm-1)       (nm)     (1e40*cgs)   (au)      (au)      (au)  
+-------------------------------------------------------------------
+   1   38397.7    260.4    -55.94828  -0.02202  -0.55773   0.01840
+   2   39008.6    256.4     25.12553  -0.45646  -0.12257   0.07214
+   3   44999.5    222.2      2.43316   0.16231  -0.11615  -0.03624
+   4   46014.5    217.3     -3.23322  -0.18428   0.01625   0.03130
+   5   48700.1    205.3     -6.42583   0.13412   0.00853  -0.05821
+   6   53471.7    187.0     25.41571  -0.02164  -0.12918  -0.13231
+   7   54451.7    183.6     -3.56180  -0.11151   0.00732  -0.08836
+   8   54893.0    182.2     17.22590   0.04560   0.10283   0.05708
+   9   59224.8    168.8    -29.77239   0.06327   0.10368  -0.08016
+  10   60800.5    164.5     -8.67042   0.11422  -0.01293   0.13990
+
+------------------------------------
+TRANSIENT CIS-EXCITATION SPECTRA
+------------------------------------
+
+Transitions starting from IROOT 1:
+
+-----------------------------------------------------------------------------
+    TRANSIENT ABSORPTION SPECTRUM VIA TRANSITION ELECTRIC DIPOLE MOMENTS     
+-----------------------------------------------------------------------------
+State   Energy  Wavelength   fosc         T2         TX        TY        TZ  
+        (cm-1)    (nm)                  (au**2)     (au)      (au)      (au) 
+-----------------------------------------------------------------------------
+   2   39008.6    256.4   4.579758889   1.22098   0.15992   0.90326   0.61606
+   3   44999.5    222.2   0.709449240   0.21819   0.02269   0.39104   0.25449
+   4   46014.5    217.3   0.495681395   0.15588  -0.03010  -0.30613  -0.24751
+   5   48700.1    205.3   0.045295054   0.01508   0.04467   0.06192   0.09616
+   6   53471.7    187.0   0.011153600   0.00408  -0.04811  -0.04140   0.00688
+   7   54451.7    183.6   0.253762587   0.09444   0.06719   0.29424   0.05783
+   8   54893.0    182.2   0.127796386   0.04794   0.07433   0.20073  -0.04614
+   9   59224.8    168.8   0.791914411   0.32054  -0.01091  -0.24514  -0.51023
+  10   60800.5    164.5   0.531144106   0.22071  -0.11432  -0.19462  -0.41203
+
+-----------------------------------------------------------------------------
+    TRANSIENT ABSORPTION SPECTRUM VIA TRANSITION VELOCITY DIPOLE MOMENTS     
+-----------------------------------------------------------------------------
+State   Energy  Wavelength   fosc         P2         PX        PY        PZ  
+        (cm-1)    (nm)                  (au**2)     (au)      (au)      (au) 
+-----------------------------------------------------------------------------
+   2   39008.6    256.4   4.579758889   1.22098  -0.04151   0.00854  -0.00324
+   3   44999.5    222.2   0.709449240   0.21819  -0.02924   0.00045  -0.01167
+   4   46014.5    217.3   0.495681395   0.15588   0.01412   0.01097   0.01049
+   5   48700.1    205.3   0.045295054   0.01508   0.00858  -0.00046  -0.00626
+   6   53471.7    187.0   0.011153600   0.00408  -0.00990   0.00338  -0.00427
+   7   54451.7    183.6   0.253762587   0.09444  -0.00430  -0.01475  -0.00256
+   8   54893.0    182.2   0.127796386   0.04794   0.00844  -0.01488   0.00452
+   9   59224.8    168.8   0.791914411   0.32054  -0.01738   0.02810   0.02775
+  10   60800.5    164.5   0.531144106   0.22071  -0.04400   0.03156   0.02264
+
+-------------------------------------------------------------------
+                      TRANSIENT CD SPECTRUM                        
+-------------------------------------------------------------------
+State   Energy Wavelength       R         MX        MY        MZ   
+        (cm-1)   (nm)       (1e40*sgs)   (au)      (au)      (au)  
+-------------------------------------------------------------------
+   2   39008.6    256.4     81.11039   0.03818   0.18818  -0.00656
+   3   44999.5    222.2     10.37550   0.00736   0.05750  -0.00254
+   4   46014.5    217.3     14.03161   0.00244  -0.09967   0.00273
+   5   48700.1    205.3      1.49921  -0.00186   0.04298   0.00625
+   6   53471.7    187.0     -0.72253   0.01043   0.02555   0.00392
+   7   54451.7    183.6    -15.25162  -0.03151  -0.09811  -0.02361
+   8   54893.0    182.2     -7.78021  -0.01597  -0.07891  -0.01135
+   9   59224.8    168.8    -22.92834   0.13098   0.14686   0.02196
+  10   60800.5    164.5    -12.33749   0.08596   0.06007   0.01129
+
+Transitions starting from IROOT 2:
+
+-----------------------------------------------------------------------------
+    TRANSIENT ABSORPTION SPECTRUM VIA TRANSITION ELECTRIC DIPOLE MOMENTS     
+-----------------------------------------------------------------------------
+State   Energy  Wavelength   fosc         T2         TX        TY        TZ  
+        (cm-1)    (nm)                  (au**2)     (au)      (au)      (au) 
+-----------------------------------------------------------------------------
+   3   44999.5    222.2   0.516543435   0.15886  -0.07109  -0.32221  -0.22358
+   4   46014.5    217.3   1.005359261   0.31617   0.10074   0.44398   0.33001
+   5   48700.1    205.3   0.072269192   0.02405  -0.08896  -0.08600  -0.09351
+   6   53471.7    187.0   0.037962518   0.01387  -0.01672   0.06225   0.09859
+   7   54451.7    183.6   1.710335815   0.63650  -0.11036  -0.40487  -0.67853
+   8   54893.0    182.2   0.844894067   0.31698   0.03014  -0.21444  -0.51969
+   9   59224.8    168.8   1.501008950   0.60757   0.04136   0.50552   0.59186
+  10   60800.5    164.5   0.877856740   0.36479  -0.05497   0.38125   0.46520
+
+-----------------------------------------------------------------------------
+    TRANSIENT ABSORPTION SPECTRUM VIA TRANSITION VELOCITY DIPOLE MOMENTS     
+-----------------------------------------------------------------------------
+State   Energy  Wavelength   fosc         P2         PX        PY        PZ  
+        (cm-1)    (nm)                  (au**2)     (au)      (au)      (au) 
+-----------------------------------------------------------------------------
+   3   44999.5    222.2   0.516543435   0.15886  -0.01706   0.01124   0.01171
+   4   46014.5    217.3   1.005359261   0.31617   0.02740  -0.02760  -0.00849
+   5   48700.1    205.3   0.072269192   0.02405  -0.02597   0.00496   0.00566
+   6   53471.7    187.0   0.037962518   0.01387  -0.02318   0.00289  -0.00594
+   7   54451.7    183.6   1.710335815   0.63650  -0.00659   0.02437   0.02730
+   8   54893.0    182.2   0.844894067   0.31698   0.01868   0.00637   0.02672
+   9   59224.8    168.8   1.501008950   0.60757  -0.02430  -0.02033  -0.05421
+  10   60800.5    164.5   0.877856740   0.36479  -0.06756  -0.00260  -0.04807
+
+-------------------------------------------------------------------
+                      TRANSIENT CD SPECTRUM                        
+-------------------------------------------------------------------
+State   Energy Wavelength       R         MX        MY        MZ   
+        (cm-1)   (nm)       (1e40*sgs)   (au)      (au)      (au)  
+-------------------------------------------------------------------
+   3   44999.5    222.2    -16.02668   0.03664   0.10078  -0.00485
+   4   46014.5    217.3    -24.31954  -0.05710  -0.10446   0.00166
+   5   48700.1    205.3     -1.01192   0.02015   0.00983  -0.00525
+   6   53471.7    187.0     -0.18433   0.00912   0.01954  -0.01476
+   7   54451.7    183.6     29.78249   0.00545  -0.14826  -0.00552
+   8   54893.0    182.2     12.07464   0.00721  -0.09822  -0.00834
+   9   59224.8    168.8     77.38960   0.04217   0.22497   0.08225
+  10   60800.5    164.5     23.71386   0.00507   0.12112   0.00946
+
+Transitions starting from IROOT 3:
+
+-----------------------------------------------------------------------------
+    TRANSIENT ABSORPTION SPECTRUM VIA TRANSITION ELECTRIC DIPOLE MOMENTS     
+-----------------------------------------------------------------------------
+State   Energy  Wavelength   fosc         T2         TX        TY        TZ  
+        (cm-1)    (nm)                  (au**2)     (au)      (au)      (au) 
+-----------------------------------------------------------------------------
+   4   46014.5    217.3   1.192653782   0.37507   0.03837   0.33518   0.51113
+   5   48700.1    205.3   0.844143077   0.28097  -0.00255  -0.20460  -0.48898
+   6   53471.7    187.0   0.884345124   0.32319   0.05585   0.38951   0.41030
+   7   54451.7    183.6   1.718754892   0.63963   0.00984  -0.16601  -0.78229
+   8   54893.0    182.2   3.003704823   1.12689  -0.19967  -0.87685  -0.56404
+   9   59224.8    168.8   5.036299656   2.03855   0.12973   0.94905   1.05879
+  10   60800.5    164.5   0.131811939   0.05477  -0.09396   0.10452   0.18714
+
+-----------------------------------------------------------------------------
+    TRANSIENT ABSORPTION SPECTRUM VIA TRANSITION VELOCITY DIPOLE MOMENTS     
+-----------------------------------------------------------------------------
+State   Energy  Wavelength   fosc         P2         PX        PY        PZ  
+        (cm-1)    (nm)                  (au**2)     (au)      (au)      (au) 
+-----------------------------------------------------------------------------
+   4   46014.5    217.3   1.192653782   0.37507   0.09820  -0.03732  -0.00068
+   5   48700.1    205.3   0.844143077   0.28097  -0.02704  -0.00712  -0.00032
+   6   53471.7    187.0   0.884345124   0.32319  -0.03970   0.02407  -0.01617
+   7   54451.7    183.6   1.718754892   0.63963  -0.03147   0.01479   0.02754
+   8   54893.0    182.2   3.003704823   1.12689   0.02430   0.04704   0.02976
+   9   59224.8    168.8   5.036299656   2.03855  -0.02435  -0.04648  -0.07133
+  10   60800.5    164.5   0.131811939   0.05477  -0.09662   0.01719  -0.03581
+
+-------------------------------------------------------------------
+                      TRANSIENT CD SPECTRUM                        
+-------------------------------------------------------------------
+State   Energy Wavelength       R         MX        MY        MZ   
+        (cm-1)   (nm)       (1e40*sgs)   (au)      (au)      (au)  
+-------------------------------------------------------------------
+   4   46014.5    217.3    -20.77191  -0.04243  -0.12359  -0.00197
+   5   48700.1    205.3      2.18034  -0.02431   0.04579  -0.02849
+   6   53471.7    187.0     22.56782  -0.01132   0.10177   0.02159
+   7   54451.7    183.6     20.51122   0.03427  -0.07323  -0.03964
+   8   54893.0    182.2     17.97120   0.01562  -0.06349   0.02559
+   9   59224.8    168.8    116.52995  -0.01533   0.19213   0.06311
+  10   60800.5    164.5      8.43896   0.05886   0.20016   0.01341
+
+Transitions starting from IROOT 4:
+
+-----------------------------------------------------------------------------
+    TRANSIENT ABSORPTION SPECTRUM VIA TRANSITION ELECTRIC DIPOLE MOMENTS     
+-----------------------------------------------------------------------------
+State   Energy  Wavelength   fosc         T2         TX        TY        TZ  
+        (cm-1)    (nm)                  (au**2)     (au)      (au)      (au) 
+-----------------------------------------------------------------------------
+   5   48700.1    205.3   3.069357363   1.02161  -0.03773  -0.53468  -0.85692
+   6   53471.7    187.0   2.604236221   0.95172   0.19720   0.61070   0.73477
+   7   54451.7    183.6   1.797515838   0.66895   0.18066   0.44749  -0.66035
+   8   54893.0    182.2   3.552477177   1.33277  -0.24974  -1.04427  -0.42414
+   9   59224.8    168.8   3.450419369   1.39663   0.12598   0.82942   0.83236
+  10   60800.5    164.5   0.663068083   0.27553  -0.00002   0.34205   0.39816
+
+-----------------------------------------------------------------------------
+    TRANSIENT ABSORPTION SPECTRUM VIA TRANSITION VELOCITY DIPOLE MOMENTS     
+-----------------------------------------------------------------------------
+State   Energy  Wavelength   fosc         P2         PX        PY        PZ  
+        (cm-1)    (nm)                  (au**2)     (au)      (au)      (au) 
+-----------------------------------------------------------------------------
+   5   48700.1    205.3   3.069357363   1.02161  -0.04901  -0.01812  -0.00469
+   6   53471.7    187.0   2.604236221   0.95172  -0.02886   0.03862  -0.03437
+   7   54451.7    183.6   1.797515838   0.66895  -0.04399  -0.00934   0.02876
+   8   54893.0    182.2   3.552477177   1.33277   0.03196   0.06400   0.01804
+   9   59224.8    168.8   3.450419369   1.39663  -0.00941  -0.04498  -0.06201
+  10   60800.5    164.5   0.663068083   0.27553  -0.11814   0.00990  -0.04671
+
+-------------------------------------------------------------------
+                      TRANSIENT CD SPECTRUM                        
+-------------------------------------------------------------------
+State   Energy Wavelength       R         MX        MY        MZ   
+        (cm-1)   (nm)       (1e40*sgs)   (au)      (au)      (au)  
+-------------------------------------------------------------------
+   5   48700.1    205.3    -13.09672  -0.03796   0.04575   0.00554
+   6   53471.7    187.0      8.06113  -0.02235   0.06984  -0.02878
+   7   54451.7    183.6     11.68601   0.02572  -0.00942  -0.03688
+   8   54893.0    182.2     30.73666   0.02064  -0.06928   0.00470
+   9   59224.8    168.8     80.14536  -0.02101   0.13098   0.07690
+  10   60800.5    164.5     45.18561   0.05456   0.27340   0.00585
+
+Transitions starting from IROOT 5:
+
+-----------------------------------------------------------------------------
+    TRANSIENT ABSORPTION SPECTRUM VIA TRANSITION ELECTRIC DIPOLE MOMENTS     
+-----------------------------------------------------------------------------
+State   Energy  Wavelength   fosc         T2         TX        TY        TZ  
+        (cm-1)    (nm)                  (au**2)     (au)      (au)      (au) 
+-----------------------------------------------------------------------------
+   6   53471.7    187.0   1.741064994   0.63628   0.07311  -0.00004   0.79431
+   7   54451.7    183.6   1.468872519   0.54664   0.05781   0.14139  -0.72340
+   8   54893.0    182.2   2.475587701   0.92876  -0.15137  -0.88667  -0.34592
+   9   59224.8    168.8   3.598415204   1.45654   0.16736   0.85032   0.83993
+  10   60800.5    164.5   0.245249034   0.10191  -0.04637   0.17820   0.26078
+
+-----------------------------------------------------------------------------
+    TRANSIENT ABSORPTION SPECTRUM VIA TRANSITION VELOCITY DIPOLE MOMENTS     
+-----------------------------------------------------------------------------
+State   Energy  Wavelength   fosc         P2         PX        PY        PZ  
+        (cm-1)    (nm)                  (au**2)     (au)      (au)      (au) 
+-----------------------------------------------------------------------------
+   6   53471.7    187.0   1.741064994   0.63628  -0.03008   0.05205  -0.06053
+   7   54451.7    183.6   1.468872519   0.54664  -0.03533  -0.00952   0.03392
+   8   54893.0    182.2   2.475587701   0.92876   0.02568   0.07096   0.00619
+   9   59224.8    168.8   3.598415204   1.45654  -0.02584  -0.04253  -0.05989
+  10   60800.5    164.5   0.245249034   0.10191  -0.10853   0.00898  -0.03929
+
+-------------------------------------------------------------------
+                      TRANSIENT CD SPECTRUM                        
+-------------------------------------------------------------------
+State   Energy Wavelength       R         MX        MY        MZ   
+        (cm-1)   (nm)       (1e40*sgs)   (au)      (au)      (au)  
+-------------------------------------------------------------------
+   6   53471.7    187.0     -5.70507  -0.07646   0.07884  -0.00819
+   7   54451.7    183.6      9.48680   0.03939  -0.06155  -0.03670
+   8   54893.0    182.2     33.29177  -0.01273  -0.08166   0.01076
+   9   59224.8    168.8     99.19757  -0.00250   0.17769   0.07112
+  10   60800.5    164.5     20.14710   0.04836   0.21799   0.02351
+
+Transitions starting from IROOT 6:
+
+-----------------------------------------------------------------------------
+    TRANSIENT ABSORPTION SPECTRUM VIA TRANSITION ELECTRIC DIPOLE MOMENTS     
+-----------------------------------------------------------------------------
+State   Energy  Wavelength   fosc         T2         TX        TY        TZ  
+        (cm-1)    (nm)                  (au**2)     (au)      (au)      (au) 
+-----------------------------------------------------------------------------
+   7   54451.7    183.6   3.893094982   1.44882   0.24589   0.88012  -0.78341
+   8   54893.0    182.2   11.195665248   4.20023  -0.54619  -1.97527   0.01469
+   9   59224.8    168.8   5.196800989   2.10352   0.19255   0.97425   1.05701
+  10   60800.5    164.5   0.510284370   0.21204  -0.14629   0.13673   0.41467
+
+-----------------------------------------------------------------------------
+    TRANSIENT ABSORPTION SPECTRUM VIA TRANSITION VELOCITY DIPOLE MOMENTS     
+-----------------------------------------------------------------------------
+State   Energy  Wavelength   fosc         P2         PX        PY        PZ  
+        (cm-1)    (nm)                  (au**2)     (au)      (au)      (au) 
+-----------------------------------------------------------------------------
+   7   54451.7    183.6   3.893094982   1.44882  -0.02003  -0.00960   0.04106
+   8   54893.0    182.2   11.195665248   4.20023   0.03653   0.06793   0.00259
+   9   59224.8    168.8   5.196800989   2.10352  -0.02392  -0.04191  -0.06043
+  10   60800.5    164.5   0.510284370   0.21204  -0.10689   0.00759  -0.04669
+
+-------------------------------------------------------------------
+                      TRANSIENT CD SPECTRUM                        
+-------------------------------------------------------------------
+State   Energy Wavelength       R         MX        MY        MZ   
+        (cm-1)   (nm)       (1e40*sgs)   (au)      (au)      (au)  
+-------------------------------------------------------------------
+   7   54451.7    183.6      8.50996   0.04992  -0.01935  -0.02911
+   8   54893.0    182.2     72.12603  -0.02053  -0.07163   0.01947
+   9   59224.8    168.8     80.21759  -0.02320   0.15231   0.02482
+  10   60800.5    164.5     14.65361   0.06345   0.21020   0.02803
+
+Transitions starting from IROOT 7:
+
+-----------------------------------------------------------------------------
+    TRANSIENT ABSORPTION SPECTRUM VIA TRANSITION ELECTRIC DIPOLE MOMENTS     
+-----------------------------------------------------------------------------
+State   Energy  Wavelength   fosc         T2         TX        TY        TZ  
+        (cm-1)    (nm)                  (au**2)     (au)      (au)      (au) 
+-----------------------------------------------------------------------------
+   8   54893.0    182.2   6.611316330   2.48034  -0.41668  -1.51857   0.02605
+   9   59224.8    168.8   5.161076044   2.08906   0.45369   1.36263   0.16269
+  10   60800.5    164.5   0.676306408   0.28103  -0.18984   0.09099   0.48653
+
+-----------------------------------------------------------------------------
+    TRANSIENT ABSORPTION SPECTRUM VIA TRANSITION VELOCITY DIPOLE MOMENTS     
+-----------------------------------------------------------------------------
+State   Energy  Wavelength   fosc         P2         PX        PY        PZ  
+        (cm-1)    (nm)                  (au**2)     (au)      (au)      (au) 
+-----------------------------------------------------------------------------
+   8   54893.0    182.2   6.611316330   2.48034   0.07128   0.05548   0.01017
+   9   59224.8    168.8   5.161076044   2.08906  -0.01705  -0.06186  -0.04777
+  10   60800.5    164.5   0.676306408   0.28103  -0.10202  -0.00572  -0.03483
+
+-------------------------------------------------------------------
+                      TRANSIENT CD SPECTRUM                        
+-------------------------------------------------------------------
+State   Energy Wavelength       R         MX        MY        MZ   
+        (cm-1)   (nm)       (1e40*sgs)   (au)      (au)      (au)  
+-------------------------------------------------------------------
+   8   54893.0    182.2     40.33488  -0.04077  -0.04433   0.04776
+   9   59224.8    168.8     86.63723  -0.09568   0.15694   0.08189
+  10   60800.5    164.5     19.38478   0.03585   0.19977   0.06114
+
+Transitions starting from IROOT 8:
+
+-----------------------------------------------------------------------------
+    TRANSIENT ABSORPTION SPECTRUM VIA TRANSITION ELECTRIC DIPOLE MOMENTS     
+-----------------------------------------------------------------------------
+State   Energy  Wavelength   fosc         T2         TX        TY        TZ  
+        (cm-1)    (nm)                  (au**2)     (au)      (au)      (au) 
+-----------------------------------------------------------------------------
+   9   59224.8    168.8   9.027612058   3.65412   0.67925   1.69489  -0.56576
+  10   60800.5    164.5   0.159256120   0.06618  -0.15358   0.00963   0.20615
+
+-----------------------------------------------------------------------------
+    TRANSIENT ABSORPTION SPECTRUM VIA TRANSITION VELOCITY DIPOLE MOMENTS     
+-----------------------------------------------------------------------------
+State   Energy  Wavelength   fosc         P2         PX        PY        PZ  
+        (cm-1)    (nm)                  (au**2)     (au)      (au)      (au) 
+-----------------------------------------------------------------------------
+   9   59224.8    168.8   9.027612058   3.65412  -0.02049  -0.08123  -0.03929
+  10   60800.5    164.5   0.159256120   0.06618  -0.10645  -0.01416  -0.01469
+
+-------------------------------------------------------------------
+                      TRANSIENT CD SPECTRUM                        
+-------------------------------------------------------------------
+State   Energy Wavelength       R         MX        MY        MZ   
+        (cm-1)   (nm)       (1e40*sgs)   (au)      (au)      (au)  
+-------------------------------------------------------------------
+   9   59224.8    168.8     33.71438  -0.14667   0.15904   0.17394
+  10   60800.5    164.5      8.17136   0.01774   0.21830   0.08710
+
+Transitions starting from IROOT 9:
+
+-----------------------------------------------------------------------------
+    TRANSIENT ABSORPTION SPECTRUM VIA TRANSITION ELECTRIC DIPOLE MOMENTS     
+-----------------------------------------------------------------------------
+State   Energy  Wavelength   fosc         T2         TX        TY        TZ  
+        (cm-1)    (nm)                  (au**2)     (au)      (au)      (au) 
+-----------------------------------------------------------------------------
+  10   60800.5    164.5   3.803356132   1.58045  -0.38071  -1.16156  -0.29373
+
+-----------------------------------------------------------------------------
+    TRANSIENT ABSORPTION SPECTRUM VIA TRANSITION VELOCITY DIPOLE MOMENTS     
+-----------------------------------------------------------------------------
+State   Energy  Wavelength   fosc         P2         PX        PY        PZ  
+        (cm-1)    (nm)                  (au**2)     (au)      (au)      (au) 
+-----------------------------------------------------------------------------
+  10   60800.5    164.5   3.803356132   1.58045  -0.11297  -0.00875  -0.00682
+
+-------------------------------------------------------------------
+                      TRANSIENT CD SPECTRUM                        
+-------------------------------------------------------------------
+State   Energy Wavelength       R         MX        MY        MZ   
+        (cm-1)   (nm)       (1e40*sgs)   (au)      (au)      (au)  
+-------------------------------------------------------------------
+  10   60800.5    164.5    -146.23429   0.04156   0.22086   0.12873
+
+Total run time:        0.184 sec
+
+           *** ORCA-CIS/TD-DFT FINISHED WITHOUT ERROR ***
+
+-----------------------
+CIS/TD-DFT TOTAL ENERGY
+-----------------------
+
+    E(SCF)  =     -3.925949186 Eh
+    DE(CIS) =      0.174952633 Eh (Root  1)
+    ----------------------------- ---------
+    E(tot)  =     -3.750996553 Eh
+
+
+-------------------------   --------------------
+FINAL SINGLE POINT ENERGY        -3.750996552648
+-------------------------   --------------------
+
+
+                            ***************************************
+                            *     ORCA property calculations      *
+                            ***************************************
+
+                                    ---------------------
+                                    Active property flags
+                                    ---------------------
+   (+) Dipole Moment
+
+
+------------------------------------------------------------------------------
+                       ORCA ELECTRIC PROPERTIES CALCULATION
+------------------------------------------------------------------------------
+
+Dipole Moment Calculation                       ... on
+Quadrupole Moment Calculation                   ... off
+Polarizability Calculation                      ... off
+GBWName                                         ... orca.gbw
+Electron density file                           ... orca.scfp
+The origin for moment calculation is the CENTER OF MASS  = ( 0.005997,  0.022680  0.058463)
+
+-------------
+DIPOLE MOMENT
+-------------
+                                X             Y             Z
+Electronic contribution:    -18.60425     -37.24074      19.40686
+Nuclear contribution   :      9.24618      17.17749     -12.75231
+                        -----------------------------------------
+Total Dipole Moment    :     -9.35807     -20.06326       6.65456
+                        -----------------------------------------
+Magnitude (a.u.)       :     23.11689
+Magnitude (Debye)      :     58.75848
+
+
+
+--------------------
+Rotational spectrum 
+--------------------
+ 
+Rotational constants in cm-1:     0.085511     0.062429     0.037712 
+Rotational constants in MHz :  2563.556631  1871.574971  1130.571471 
+
+ Dipole components along the rotational axes: 
+x,y,z [a.u.] :    11.276232   -19.921138     3.222682 
+x,y,z [Debye]:    28.661905   -50.635508     8.191407 
+
+ 
+
+Timings for individual modules:
+
+Sum of individual times         ...        0.453 sec (=   0.008 min)
+STO integral calculation        ...        0.022 sec (=   0.000 min)   4.7 %
+SCF iterations                  ...        0.214 sec (=   0.004 min)  47.2 %
+CIS module                      ...        0.218 sec (=   0.004 min)  48.0 %
+                             ****ORCA TERMINATED NORMALLY****
+TOTAL RUN TIME: 0 days 0 hours 0 minutes 0 seconds 568 msec

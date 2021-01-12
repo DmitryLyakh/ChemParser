@@ -1,4 +1,4 @@
-!Parser of the Psi4 output.
+!Parser of the output of quantum-chemical software.
 !Author: Dmitry I. Lyakh
        module chem_parser
        use parse_prim
@@ -11,12 +11,22 @@
        type, public:: mol_params_t
         integer:: num_ao_orbitals
         integer:: num_mo_orbitals
+        integer:: num_electrons
         integer:: num_electrons_a
         integer:: num_electrons_b
         integer:: multiplicity
         integer:: charge
         real(8):: nuclear_repulsion
        end type mol_params_t
+
+       public psi4_extract_mol_params
+       public psi4_extract_overlap
+       public psi4_extract_mo_coef
+       public psi4_extract_cis_coef
+
+       public orca_extract_mol_params
+       public orca_extract_mo_coef
+       public orca_extract_cis_coef
 
        contains
 
@@ -63,6 +73,7 @@
               if(matched) then
                call charnum(str(pred_offset(1):pred_offset(1)+pred_length(1)-1),val,mol_params%num_electrons_b)
                if(VERBOSE) write(*,'("Extracted number of beta electrons = ",i6)') mol_params%num_electrons_b
+               mol_params%num_electrons=mol_params%num_electrons_a+mol_params%num_electrons_b
                do
                 str=' '; read(10,'(A1024)') str; l=len_trim(str)
                 if(l.gt.0) then
@@ -95,9 +106,10 @@
         return
        end function psi4_extract_mol_params
 
-       function psi4_extract_overlap(filename,overlap) result(parsed)
+       function psi4_extract_overlap(filename,mol_params,overlap) result(parsed)
         logical:: parsed
         character(*), intent(in):: filename              !in: file name
+        type(mol_params_t), intent(in):: mol_params      !in: molecular parameters
         real(8), allocatable, intent(out):: overlap(:,:) !out: AO overlap matrix
         integer:: pred_offset(1024),pred_length(1024),num_pred,first,last,ierr,i,j,l,m,n
         character(1024):: str
@@ -109,7 +121,7 @@
         if(VERBOSE) then
          write(*,'("Processing file")',advance='NO'); write(*,*) filename(1:len_trim(filename))
         endif
-        do
+        eloop: do
          str=' '; read(10,'(A1024)',end=100) str; l=len_trim(str)
          if(l.gt.0) then
           call skip_blanks(str(1:l),first,last)
@@ -135,21 +147,23 @@
               read(10,*) l,overlap(i,j:min(n,j+4))
              enddo
             enddo
-            if(VERBOSE) write(*,'("Extracted the data")')
+            if(VERBOSE) write(*,'("Extracted the data successfully")')
             parsed=.TRUE.
+            exit eloop
            endif
           endif
          endif
-        enddo
+        enddo eloop
 100     close(10)
         return
        end function psi4_extract_overlap
 
-       function psi4_extract_mo_coef(filename,mo_coef_a,mo_coef_b) result(parsed)
+       function psi4_extract_mo_coef(filename,mol_params,mo_coef_a,mo_coef_b) result(parsed)
         logical:: parsed
         character(*), intent(in):: filename                        !in: file name
-        real(8), allocatable, target, intent(out):: mo_coef_a(:,:) !out: Alpha MO coefficients
-        real(8), allocatable, target, intent(out):: mo_coef_b(:,:) !out: Alpha MO coefficients
+        type(mol_params_t), intent(in):: mol_params                !in: molecular parameters
+        real(8), allocatable, target, intent(out):: mo_coef_a(:,:) !out: alpha MO coefficients (AO,MO)
+        real(8), allocatable, target, intent(out):: mo_coef_b(:,:) !out: beta MO coefficients (AO,MO)
         real(8), pointer:: mo_coef(:,:)
         integer:: pred_offset(1024),pred_length(1024),num_pred,first,last,spin,ierr,i,j,l,m,n
         character(1024):: str
@@ -161,7 +175,7 @@
         if(VERBOSE) then
          write(*,'("Processing file")',advance='NO'); write(*,*) filename(1:len_trim(filename))
         endif
-        do
+        eloop: do
          str=' '; read(10,'(A1024)',end=100) str; l=len_trim(str)
          if(l.gt.0) then
           spin=0
@@ -183,6 +197,7 @@
             if(spin.gt.0) then
              if(.not.allocated(mo_coef_a)) then
               allocate(mo_coef_a(m,n))
+              mo_coef_a=0d0
               mo_coef=>mo_coef_a
              else
               write(*,'("#ERROR: Repeated Alpha MO coefficients!")'); stop
@@ -190,6 +205,7 @@
             elseif(spin.lt.0) then
              if(.not.allocated(mo_coef_b)) then
               allocate(mo_coef_b(m,n))
+              mo_coef_b=0d0
               mo_coef=>mo_coef_b
              else
               write(*,'("#ERROR: Repeated Beta MO coefficients!")'); stop
@@ -204,12 +220,12 @@
               read(10,*) l,mo_coef(i,j:min(n,j+4))
              enddo
             enddo
-            if(VERBOSE) write(*,'("Extracted the data")')
+            if(VERBOSE) write(*,'("Extracted the data successfully")')
             parsed=.TRUE.
            endif
           endif
          endif
-        enddo
+        enddo eloop
 100     close(10)
         return
        end function psi4_extract_mo_coef
@@ -218,8 +234,8 @@
         logical:: parsed
         character(*), intent(in):: filename                   !in: file name
         type(mol_params_t), intent(in):: mol_params           !in: molecular parameters
-        real(8), allocatable, intent(out):: cis_coef_a(:,:,:) !out: CIS coefficients for all states
-        real(8), allocatable, intent(out):: cis_coef_b(:,:,:) !out: CIS coefficients for all states
+        real(8), allocatable, intent(out):: cis_coef_a(:,:,:) !out: alpha CIS coefficients for all states (occ,virt,state)
+        real(8), allocatable, intent(out):: cis_coef_b(:,:,:) !out: beta CIS coefficients for all states (occ,virt,state)
         integer:: pred_offset(1024),pred_length(1024),num_pred,first,last,inda,indb,ierr,i,j,k,l,m,n
         character(1024):: str
         logical:: matched
@@ -249,6 +265,7 @@
            enddo
            allocate(cis_coef_a(mol_params%num_electrons_a,mol_params%num_mo_orbitals-mol_params%num_electrons_a,1:n-1))
            allocate(cis_coef_b(mol_params%num_electrons_b,mol_params%num_mo_orbitals-mol_params%num_electrons_b,1:n-1))
+           cis_coef_a=0d0; cis_coef_b=0d0
            if(VERBOSE) write(*,'("Allocated CIS coefficient arrays")')
            do m=0,n-1 !number of roots
             do
@@ -310,6 +327,232 @@
         return
        end function psi4_extract_cis_coef
 
+       function orca_extract_mol_params(filename,mol_params) result(parsed)
+        logical:: parsed
+        character(*), intent(in):: filename          !in: file name
+        type(mol_params_t), intent(out):: mol_params !out: molecular parameters
+        integer:: pred_offset(1024),pred_length(1024),num_pred,first,last,spin,ierr,i,j,l,m,n
+        character(1024):: str
+        logical:: matched
+        real(8):: val
+
+        parsed=.FALSE.
+        open(10,file=filename(1:len_trim(filename)),form='FORMATTED',status='OLD')
+        if(VERBOSE) then
+         write(*,'("Processing file")',advance='NO'); write(*,*) filename(1:len_trim(filename))
+        endif
+        eloop: do
+         str=' '; read(10,'(A1024)',end=100) str; l=len_trim(str)
+         if(l.gt.0) then
+          call skip_blanks(str(1:l),first,last)
+          if(str(first:first+len_trim('ORCA SCF')-1).eq.'ORCA SCF') then
+           sloop: do
+            str=' '; read(10,'(A1024)') str; l=len_trim(str)
+            if(l.gt.0) then
+             call skip_blanks(str(1:l),first,last)
+             if(str(first:first+len_trim('General Settings:')-1).eq.'General Settings:') then
+              str=' '; read(10,'(A1024)') str
+              str=' '; read(10,'(A1024)') str
+              str=' '; read(10,'(A1024)') str; l=len_trim(str)
+              matched=match_symb_pattern(str(1:l),'Total Charge`Charge`.... `',num_pred,pred_offset,pred_length,ierr)
+              if(matched) then
+               call charnum(str(pred_offset(3):pred_offset(3)+pred_length(3)-1),val,mol_params%charge)
+               if(VERBOSE) write(*,'("Extracted molecule charge = ",i6)') mol_params%charge
+               str=' '; read(10,'(A1024)') str; l=len_trim(str)
+               matched=match_symb_pattern(str(1:l),'Multiplicity`Mult`.... `',num_pred,pred_offset,pred_length,ierr)
+               if(matched) then
+                call charnum(str(pred_offset(3):pred_offset(3)+pred_length(3)-1),val,mol_params%multiplicity)
+                if(VERBOSE) write(*,'("Extracted spin multiplicity = ",i6)') mol_params%multiplicity
+                str=' '; read(10,'(A1024)') str; l=len_trim(str)
+                matched=match_symb_pattern(str(1:l),'Number of Electrons`NEL`.... `',num_pred,pred_offset,pred_length,ierr)
+                if(matched) then
+                 call charnum(str(pred_offset(3):pred_offset(3)+pred_length(3)-1),val,mol_params%num_electrons)
+                 if(VERBOSE) write(*,'("Extracted total number of electrons = ",i6)') mol_params%num_electrons
+                 mol_params%num_electrons_a=(mol_params%num_electrons/2)+mod(mol_params%num_electrons,2)
+                 mol_params%num_electrons_b=(mol_params%num_electrons/2)
+                 if(VERBOSE) write(*,'("Assuming number of alpha/beta electrons = ",i6,1x,i6)')&
+                                  &mol_params%num_electrons_a,mol_params%num_electrons_b
+                 str=' '; read(10,'(A1024)') str; l=len_trim(str)
+                 matched=match_symb_pattern(str(1:l),'Basis Dimension`Dim`.... `',num_pred,pred_offset,pred_length,ierr)
+                 if(matched) then
+                  call charnum(str(pred_offset(3):pred_offset(3)+pred_length(3)-1),val,mol_params%num_ao_orbitals)
+                  if(VERBOSE) write(*,'("Extracted number of basis functions = ",i6)') mol_params%num_ao_orbitals
+                  mol_params%num_mo_orbitals=mol_params%num_ao_orbitals
+                  if(VERBOSE) write(*,'("Assuming number of molecular orbitals = ",i6)') mol_params%num_mo_orbitals
+                  str=' '; read(10,'(A1024)') str; l=len_trim(str)
+                  matched=match_symb_pattern(str(1:l),'Nuclear Repulsion`ENuc`.... ` Eh',num_pred,pred_offset,pred_length,ierr)
+                  if(matched) then
+                   call charnum(str(pred_offset(3):pred_offset(3)+pred_length(3)-1),mol_params%nuclear_repulsion,i)
+                   if(VERBOSE) write(*,'("Extracted nuclear repulsion energy = ",D25.14)') mol_params%nuclear_repulsion
+                   exit sloop
+                  else
+                   write(*,'("#ERROR: Unable to find nuclear repulsion energy!")'); stop
+                  endif
+                 else
+                  write(*,'("#ERROR: Unable to find number of basis functions!")'); stop
+                 endif
+                else
+                 write(*,'("#ERROR: Unable to find number of electrons!")'); stop
+                endif
+               else
+                write(*,'("#ERROR: Unable to find spin multiplicity!")'); stop
+               endif
+              else
+               write(*,'("#ERROR: Unable to find molecule charge!")'); stop
+              endif
+             endif
+            endif
+           enddo sloop
+           parsed=.TRUE.
+           exit eloop
+          endif
+         endif
+        enddo eloop
+100     close(10)
+        return
+       end function orca_extract_mol_params
+
+       function orca_extract_mo_coef(filename,mol_params,mo_coef_a,mo_coef_b) result(parsed)
+        logical:: parsed
+        character(*), intent(in):: filename                        !in: file name
+        type(mol_params_t), intent(in):: mol_params                !in: molecular parameters
+        real(8), allocatable, target, intent(out):: mo_coef_a(:,:) !out: alpha MO coefficients (AO,MO)
+        real(8), allocatable, target, intent(out):: mo_coef_b(:,:) !out: beta MO coefficients (AO,MO)
+        real(8), pointer:: mo_coef(:,:)
+        integer:: pred_offset(1024),pred_length(1024),num_pred,first,last,spin,ierr,i,j,l,m,n
+        character(1024):: str
+        logical:: matched
+        real(8):: val
+
+        parsed=.FALSE.
+        open(10,file=filename(1:len_trim(filename)),form='FORMATTED',status='OLD')
+        if(VERBOSE) then
+         write(*,'("Processing file")',advance='NO'); write(*,*) filename(1:len_trim(filename))
+        endif
+        eloop: do
+         str=' '; read(10,'(A1024)',end=100) str; l=len_trim(str)
+         if(l.gt.0) then
+          call skip_blanks(str(1:l),first,last)
+          if(str(first:first+len_trim('[MO]')-1).eq.'[MO]') then
+           if(VERBOSE) write(*,'("Detected MO coefficients")')
+           allocate(mo_coef_a(mol_params%num_ao_orbitals,mol_params%num_mo_orbitals))
+           allocate(mo_coef_b(mol_params%num_ao_orbitals,mol_params%num_mo_orbitals))
+           mo_coef_a=0d0; mo_coef_b=0d0
+           if(VERBOSE) write(*,'("Allocated MO coefficients: Dimensions = ",i9," x ",i9)')&
+                            &mol_params%num_ao_orbitals,mol_params%num_mo_orbitals
+           do j=1,mol_params%num_mo_orbitals
+            str=' '; read(10,'(A1024)') str
+            str=' '; read(10,'(A1024)') str; l=len_trim(str)
+            str=' '; read(10,'(A1024)') str; l=len_trim(str)
+            matched=match_symb_pattern(str(1:l),'Spin= `',num_pred,pred_offset,pred_length,ierr)
+            if(matched) then
+             mo_coef=>NULL()
+             if(str(pred_offset(1):pred_offset(1)+pred_length(1)-1).eq.'Alpha') then
+              mo_coef=>mo_coef_a
+             elseif(str(pred_offset(1):pred_offset(1)+pred_length(1)-1).eq.'Beta') then
+              mo_coef=>mo_coef_b
+             endif
+             if(associated(mo_coef)) then
+              str=' '; read(10,'(A1024)') str; l=len_trim(str)
+              do i=1,mol_params%num_ao_orbitals
+               read(10,*) l,mo_coef(i,j)
+              enddo
+             else
+              write(*,'("#ERROR: Invalid format of MO coefficients: Invalid spin!")'); stop
+             endif
+            else
+             write(*,'("#ERROR: Invalid format of MO coefficients: Spin not found!")'); stop
+            endif
+           enddo
+           if(VERBOSE) write(*,'("Extracted the data successfully")')
+           parsed=.TRUE.
+           exit eloop
+          endif
+         endif
+        enddo eloop
+100     close(10)
+        return
+       end function orca_extract_mo_coef
+
+       function orca_extract_cis_coef(filename,mol_params,cis_coef_a,cis_coef_b) result(parsed)
+        logical:: parsed
+        character(*), intent(in):: filename                           !in: file name
+        type(mol_params_t), intent(in):: mol_params                   !in: molecular parameters
+        real(8), allocatable, target, intent(out):: cis_coef_a(:,:,:) !out: alpha CIS coefficients for all states (occ,virt,state)
+        real(8), allocatable, target, intent(out):: cis_coef_b(:,:,:) !out: beta CIS coefficients for all states (occ,virt,state)
+        real(8), pointer:: cis_coef(:,:,:)
+        integer:: pred_offset(1024),pred_length(1024),num_pred,first,last,nocc,ierr,i,j,k,l,m,n
+        character(1024):: str
+        logical:: matched
+        real(8):: val
+
+        parsed=.FALSE.
+        open(10,file=filename(1:len_trim(filename)),form='FORMATTED',status='OLD')
+        if(VERBOSE) then
+         write(*,'("Processing file")',advance='NO'); write(*,*) filename(1:len_trim(filename))
+        endif
+        n=0
+        eloop: do
+         str=' '; read(10,'(A1024)',end=100) str; l=len_trim(str)
+         if(l.gt.0) then
+          matched=match_symb_pattern(str(1:l),'CIS-EXCITED STATES (`)',num_pred,pred_offset,pred_length,ierr)
+          if(matched) then
+           if(VERBOSE) then
+            write(*,'("Detected CIS excited state vectors:")',ADVANCE='NO')
+            write(*,*) str(pred_offset(1):pred_offset(1)+pred_length(1)-1)
+           endif
+           do m=1,n
+            do
+             str=' '; read(10,'(A1024)') str; l=len_trim(str)
+             if(l.ge.5) then
+              if(str(1:5).eq.'STATE') exit
+             endif
+            enddo
+            do
+             str=' '; read(10,'(A1024)') str; l=len_trim(str)
+             if(l.gt.0) then
+              matched=match_symb_pattern(str(1:l),'` -> ` : ` (c= `)',num_pred,pred_offset,pred_length,ierr)
+              if(matched) then
+               if(str(pred_offset(1)+pred_length(1)-1:pred_offset(1)+pred_length(1)-1).eq.'a') then
+                cis_coef=>cis_coef_a; nocc=mol_params%num_electrons_a
+               elseif(str(pred_offset(1)+pred_length(1)-1:pred_offset(1)+pred_length(1)-1).eq.'b') then
+                cis_coef=>cis_coef_b; nocc=mol_params%num_electrons_b
+               else
+                write(*,'("#ERROR: Invalid format of CIS coefficients: Invalid spin label")'); stop
+               endif
+               call charnum(str(pred_offset(1):pred_offset(1)+pred_length(1)-2),val,i)
+               call charnum(str(pred_offset(2):pred_offset(2)+pred_length(2)-2),val,j)
+               call charnum(str(pred_offset(4):pred_offset(4)+pred_length(4)-1),val,l)
+               cis_coef(i+1,j+1-nocc,m)=val
+              else
+               write(*,'("#ERROR: Invalid format of CIS coefficients!")'); stop
+              endif
+             else
+              exit
+             endif
+            enddo
+            if(VERBOSE) write(*,'("Extracted CIS state ",i4)') m
+           enddo
+           if(VERBOSE) write(*,'("Extracted the data successfully")')
+           parsed=.TRUE.
+           exit eloop
+          else
+           matched=match_symb_pattern(str(1:l),'Number of roots to be determined`... `',num_pred,pred_offset,pred_length,ierr)
+           if(matched) then
+            call charnum(str(pred_offset(2):pred_offset(2)+pred_length(2)-1),val,n)
+            if(VERBOSE) write(*,'("Detected number of roots = ",i6)') n
+            allocate(cis_coef_a(mol_params%num_electrons_a,mol_params%num_mo_orbitals-mol_params%num_electrons_a,1:n))
+            allocate(cis_coef_b(mol_params%num_electrons_b,mol_params%num_mo_orbitals-mol_params%num_electrons_b,1:n))
+            cis_coef_a=0d0; cis_coef_b=0d0
+            if(VERBOSE) write(*,'("Allocated CIS coefficient arrays")')
+           endif
+          endif
+         endif
+        enddo eloop
+100     close(10)
+        return
+       end function orca_extract_cis_coef
+
        end module chem_parser
 
 
@@ -319,13 +562,33 @@
         type(mol_params_t):: mol_params
         real(8), allocatable:: moa(:,:),mob(:,:),sao(:,:),cisa(:,:,:),cisb(:,:,:)
 
-        parsed=psi4_extract_mol_params('output.dat',mol_params)
-        parsed=psi4_extract_overlap('output.dat',sao)
+ !Test Psi4 output parsing:
+        parsed=psi4_extract_mol_params('psi4.dat',mol_params)
+        parsed=psi4_extract_overlap('psi4.dat',mol_params,sao)
         !call wr_mat_dp(size(sao,1),size(sao,2),sao) !debug
-        parsed=psi4_extract_mo_coef('output.dat',moa,mob)
+        parsed=psi4_extract_mo_coef('psi4.dat',mol_params,moa,mob)
         !call wr_mat_dp(size(moa,1),size(moa,2),moa) !debug
         !call wr_mat_dp(size(mob,1),size(mob,2),mob) !debug
-        parsed=psi4_extract_cis_coef('output.dat',mol_params,cisa,cisb)
+        parsed=psi4_extract_cis_coef('psi4.dat',mol_params,cisa,cisb)
         !call wr_mat_dp(size(cisa,1),size(cisa,2),cisa(:,:,1)) !debug
         !call wr_mat_dp(size(cisb,1),size(cisb,2),cisb(:,:,1)) !debug
+        if(allocated(cisa)) deallocate(cisa)
+        if(allocated(cisb)) deallocate(cisb)
+        if(allocated(moa)) deallocate(moa)
+        if(allocated(mob)) deallocate(mob)
+        if(allocated(sao)) deallocate(sao)
+
+ !Test ORCA output parsing:
+        parsed=orca_extract_mol_params('orca.dat',mol_params)
+        parsed=orca_extract_mo_coef('orca.molden',mol_params,moa,mob)
+        !call wr_mat_dp(size(moa,1),size(moa,2),moa) !debug
+        !call wr_mat_dp(size(mob,1),size(mob,2),mob) !debug
+        parsed=orca_extract_cis_coef('orca.dat',mol_params,cisa,cisb)
+        !call wr_mat_dp(size(cisa,1),size(cisa,2),cisa(:,:,1)) !debug
+        !call wr_mat_dp(size(cisb,1),size(cisb,2),cisb(:,:,1)) !debug
+        if(allocated(cisa)) deallocate(cisa)
+        if(allocated(cisb)) deallocate(cisb)
+        if(allocated(moa)) deallocate(moa)
+        if(allocated(mob)) deallocate(mob)
+
        end program test_chem_parser
