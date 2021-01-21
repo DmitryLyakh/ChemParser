@@ -9,15 +9,21 @@
        logical, private:: VERBOSE=.TRUE.
 
        type, public:: mol_params_t
-        integer:: num_ao_orbitals
-        integer:: num_mo_orbitals
-        integer:: num_electrons
-        integer:: num_electrons_a
-        integer:: num_electrons_b
-        integer:: multiplicity
-        integer:: charge
-        real(8):: nuclear_repulsion
+        integer:: num_ao_orbitals=0
+        integer:: num_mo_orbitals=0
+        integer:: num_electrons=0
+        integer:: num_electrons_a=0
+        integer:: num_electrons_b=0
+        integer:: multiplicity=0
+        integer:: charge=0
+        real(8):: nuclear_repulsion=0d0
        end type mol_params_t
+
+       type, public:: basis_func_info_t
+        integer:: atom_id   !atom id {1..M}
+        integer:: shell_id  !shell id within atom {0..L}
+        integer:: ao_id     !AO id within atom {0..K}
+       end type basis_func_info_t
 
        public psi4_extract_mol_params
        public psi4_extract_overlap
@@ -27,6 +33,7 @@
        public orca_extract_mol_params
        public orca_extract_mo_coef
        public orca_extract_cis_coef
+       public orca_extract_basis_info
 
        contains
 
@@ -553,6 +560,112 @@
         return
        end function orca_extract_cis_coef
 
+       function orca_extract_basis_info(filename,mol_params,basis_info) result(parsed)
+        logical:: parsed
+        character(*), intent(in):: filename                               !in: file name
+        type(mol_params_t), intent(in):: mol_params                       !in: molecular parameters
+        type(basis_func_info_t), allocatable, intent(out):: basis_info(:) !out: information of each basis function {1..N}
+        integer:: pred_offset(1024),pred_length(1024),num_pred,first,last,nocc,ierr,i,j,k,l,m,n
+        character(1024):: str
+        logical:: matched
+        real(8):: val
+
+        parsed=.FALSE.
+        if(mol_params%num_ao_orbitals.gt.0) then
+         open(10,file=filename(1:len_trim(filename)),form='FORMATTED',status='OLD')
+         if(VERBOSE) then
+          write(*,'("Processing file")',advance='NO'); write(*,*) filename(1:len_trim(filename))
+         endif
+         eloop: do
+          str=' '; read(10,'(A1024)',end=100) str; l=len_trim(str)
+          if(l.gt.0) then
+           if(str(1:l).eq.'[GTO]') then
+            if(VERBOSE) write(*,'("Detected Gaussian type orbital information:")')
+            allocate(basis_info(mol_params%num_ao_orbitals))
+            n=0
+            do while(n.lt.mol_params%num_ao_orbitals) !loop over atoms
+             read(10,*) i,j !i = atom id
+             m=0; k=0
+             do !loop over atomic shells
+              str=' '; read(10,'(A1024)',end=100) str; l=len_trim(str)
+              if(l.gt.0) then
+               call skip_blanks(str(1:l),first,last)
+               select case(str(first:first))
+               case('s','S')
+                do j=1,1
+                 n=n+1
+                 basis_info(n)%atom_id=i
+                 basis_info(n)%shell_id=m
+                 basis_info(n)%ao_id=k
+                 k=k+1
+                enddo
+                m=m+1
+               case('p','P')
+                do j=1,3
+                 n=n+1
+                 basis_info(n)%atom_id=i
+                 basis_info(n)%shell_id=m
+                 basis_info(n)%ao_id=k
+                 k=k+1
+                enddo
+                m=m+1
+               case('d','D')
+                do j=1,5
+                 n=n+1
+                 basis_info(n)%atom_id=i
+                 basis_info(n)%shell_id=m
+                 basis_info(n)%ao_id=k
+                 k=k+1
+                enddo
+                m=m+1
+               case('f','F')
+                do j=1,7
+                 n=n+1
+                 basis_info(n)%atom_id=i
+                 basis_info(n)%shell_id=m
+                 basis_info(n)%ao_id=k
+                 k=k+1
+                enddo
+                m=m+1
+               case('g','G')
+                do j=1,9
+                 n=n+1
+                 basis_info(n)%atom_id=i
+                 basis_info(n)%shell_id=m
+                 basis_info(n)%ao_id=k
+                 k=k+1
+                enddo
+                m=m+1
+               case('h','H')
+                do j=1,11
+                 n=n+1
+                 basis_info(n)%atom_id=i
+                 basis_info(n)%shell_id=m
+                 basis_info(n)%ao_id=k
+                 k=k+1
+                enddo
+                m=m+1
+               end select
+              else
+               exit
+              endif
+             enddo
+            enddo
+            if(VERBOSE) then
+             write(*,'("Extracted ",i7," basis functions successfully")') n
+            endif
+            parsed=.TRUE.
+            exit eloop
+           endif
+          endif
+         enddo eloop
+100      close(10)
+        else
+         write(*,'("#ERROR: Unknown number of AO orbitals in Molecular Parameters!")'); stop
+        endif
+        return
+       end function orca_extract_basis_info
+
        end module chem_parser
 
 
@@ -561,6 +674,7 @@
         logical:: parsed
         type(mol_params_t):: mol_params
         real(8), allocatable:: moa(:,:),mob(:,:),sao(:,:),cisa(:,:,:),cisb(:,:,:)
+        type(basis_func_info_t), allocatable:: basis_info(:)
 
  !Test Psi4 output parsing:
         parsed=psi4_extract_mol_params('psi4.dat',mol_params)
@@ -586,6 +700,8 @@
         parsed=orca_extract_cis_coef('orca.dat',mol_params,cisa,cisb)
         !call wr_mat_dp(size(cisa,1),size(cisa,2),cisa(:,:,1)) !debug
         !call wr_mat_dp(size(cisb,1),size(cisb,2),cisb(:,:,1)) !debug
+        parsed=orca_extract_basis_info('orca.molden',mol_params,basis_info)
+        if(allocated(basis_info)) deallocate(basis_info)
         if(allocated(cisa)) deallocate(cisa)
         if(allocated(cisb)) deallocate(cisb)
         if(allocated(moa)) deallocate(moa)
