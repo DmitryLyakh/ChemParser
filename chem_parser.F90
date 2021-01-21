@@ -666,11 +666,7 @@
         return
        end function orca_extract_basis_info
 
-       end module chem_parser
-
-
-       program test_chem_parser
-        use chem_parser
+       subroutine test_chem_parser()
         logical:: parsed
         type(mol_params_t):: mol_params
         real(8), allocatable:: moa(:,:),mob(:,:),sao(:,:),cisa(:,:,:),cisb(:,:,:)
@@ -706,5 +702,6 @@
         if(allocated(cisb)) deallocate(cisb)
         if(allocated(moa)) deallocate(moa)
         if(allocated(mob)) deallocate(mob)
+       end subroutine test_chem_parser
 
-       end program test_chem_parser
+       end module chem_parser
