@@ -118,7 +118,7 @@
         logical:: parsed
         character(*), intent(in):: filename              !in: file name
         type(mol_params_t), intent(in):: mol_params      !in: molecular parameters
-        real(8), allocatable, intent(out):: overlap(:,:) !out: AO overlap matrix
+        real(8), allocatable, intent(out):: overlap(:,:) !out: AO overlap matrix (AO,AO)
         integer:: pred_offset(1024),pred_length(1024),num_pred,first,last,ierr,i,j,l,m,n
         character(1024):: str
         logical:: matched
@@ -424,7 +424,7 @@
         logical:: parsed
         character(*), intent(in):: filename              !in: file name
         type(mol_params_t), intent(in):: mol_params      !in: molecular parameters
-        real(8), allocatable, intent(out):: overlap(:,:) !out: AO overlap matrix
+        real(8), allocatable, intent(out):: overlap(:,:) !out: AO overlap matrix (AO,AO)
         integer:: pred_offset(1024),pred_length(1024),num_pred,first,last,ierr,i,j,l,m
         character(1024):: str
         logical:: matched
@@ -756,6 +756,8 @@
         if(allocated(moa)) deallocate(moa)
         if(allocated(mob)) deallocate(mob)
         if(allocated(sao)) deallocate(sao)
+        write(*,'()')
+        return
        end subroutine test_chem_parser
 
        end module chem_parser
