@@ -1,4 +1,4 @@
-!Parser of the output of quantum-chemical software.
+!Parser of output files of quantum-chemical software: Psi4, ORCA
 !Author: Dmitry I. Lyakh
        module chem_parser
        use parse_prim
@@ -31,6 +31,7 @@
        public psi4_extract_cis_coef
 
        public orca_extract_mol_params
+       public orca_extract_overlap
        public orca_extract_mo_coef
        public orca_extract_cis_coef
        public orca_extract_basis_info
@@ -136,7 +137,7 @@
            if(VERBOSE) write(*,'("Detected AO overlap matrix")')
            str=' '; read(10,'(A1024)') str; l=len_trim(str)
            matched=match_symb_pattern(str(1:l),'Irrep: ` Size: ` x `',num_pred,pred_offset,pred_length,ierr)
-           if(ierr.eq.0) then
+           if(matched) then
             call charnum(str(pred_offset(2):pred_offset(2)+pred_length(2)-1),val,m)
             call charnum(str(pred_offset(3):pred_offset(3)+pred_length(3)-1),val,n)
             if(VERBOSE) write(*,'("Dimensions = ",i9," x ",i9)') m,n
@@ -197,7 +198,7 @@
           if(spin.ne.0) then
            str=' '; read(10,'(A1024)') str; l=len_trim(str)
            matched=match_symb_pattern(str(1:l),'Irrep: ` Size: ` x `',num_pred,pred_offset,pred_length,ierr)
-           if(ierr.eq.0) then
+           if(matched) then
             call charnum(str(pred_offset(2):pred_offset(2)+pred_length(2)-1),val,m)
             call charnum(str(pred_offset(3):pred_offset(3)+pred_length(3)-1),val,n)
             if(VERBOSE) write(*,'("Dimensions = ",i9," x ",i9)') m,n
@@ -418,6 +419,56 @@
 100     close(10)
         return
        end function orca_extract_mol_params
+
+       function orca_extract_overlap(filename,mol_params,overlap) result(parsed)
+        logical:: parsed
+        character(*), intent(in):: filename              !in: file name
+        type(mol_params_t), intent(in):: mol_params      !in: molecular parameters
+        real(8), allocatable, intent(out):: overlap(:,:) !out: AO overlap matrix
+        integer:: pred_offset(1024),pred_length(1024),num_pred,first,last,ierr,i,j,l,m
+        character(1024):: str
+        logical:: matched
+        real(8):: val
+
+        parsed=.FALSE.
+        open(10,file=filename(1:len_trim(filename)),form='FORMATTED',status='OLD')
+        if(VERBOSE) then
+         write(*,'("Processing file")',advance='NO'); write(*,*) filename(1:len_trim(filename))
+        endif
+        eloop: do
+         str=' '; read(10,'(A1024)',end=100) str; l=len_trim(str)
+         if(l.gt.0) then
+          call skip_blanks(str(1:l),first,last)
+          if(str(first:first+len_trim('OVERLAP MATRIX')-1).eq.'OVERLAP MATRIX') then
+           if(VERBOSE) write(*,'("Detected AO overlap matrix")')
+           str=' '; read(10,'(A1024)') str; l=len_trim(str)
+           m=mol_params%num_ao_orbitals
+           if(m.gt.0) then
+            if(VERBOSE) write(*,'("Assumed dimensions = ",i9," x ",i9)') m,m
+            if(.not.allocated(overlap)) then
+             allocate(overlap(m,m))
+            else
+             write(*,'("#ERROR: Repeated AO overlap matrix!")'); stop
+            endif
+            if(VERBOSE) write(*,'("Allocated AO overlap matrix array")')
+            do j=1,m,6
+             str=' '; read(10,'(A1024)') str
+             do i=1,m
+              read(10,*) l,overlap(i,j:min(m,j+5))
+             enddo
+            enddo
+            if(VERBOSE) write(*,'("Extracted the data successfully")')
+            parsed=.TRUE.
+            exit eloop
+           else
+            write(*,'("#ERROR: Molecular parameters are missing the number of AO!")'); stop
+           endif
+          endif
+         endif
+        enddo eloop
+100     close(10)
+        return
+       end function orca_extract_overlap
 
        function orca_extract_mo_coef(filename,mol_params,mo_coef_a,mo_coef_b) result(parsed)
         logical:: parsed
@@ -687,21 +738,24 @@
         if(allocated(moa)) deallocate(moa)
         if(allocated(mob)) deallocate(mob)
         if(allocated(sao)) deallocate(sao)
+        write(*,'()')
 
  !Test ORCA output parsing:
-        parsed=orca_extract_mol_params('orca.dat',mol_params)
-        parsed=orca_extract_mo_coef('orca.molden',mol_params,moa,mob)
+        parsed=orca_extract_mol_params('orca_new.dat',mol_params)
+        parsed=orca_extract_overlap('orca_new.dat',mol_params,sao)
+        parsed=orca_extract_mo_coef('orca_new.s1.molden',mol_params,moa,mob)
         !call wr_mat_dp(size(moa,1),size(moa,2),moa) !debug
         !call wr_mat_dp(size(mob,1),size(mob,2),mob) !debug
-        parsed=orca_extract_cis_coef('orca.dat',mol_params,cisa,cisb)
+        parsed=orca_extract_cis_coef('orca_new.dat',mol_params,cisa,cisb)
         !call wr_mat_dp(size(cisa,1),size(cisa,2),cisa(:,:,1)) !debug
         !call wr_mat_dp(size(cisb,1),size(cisb,2),cisb(:,:,1)) !debug
-        parsed=orca_extract_basis_info('orca.molden',mol_params,basis_info)
+        parsed=orca_extract_basis_info('orca_new.s1.molden',mol_params,basis_info)
         if(allocated(basis_info)) deallocate(basis_info)
         if(allocated(cisa)) deallocate(cisa)
         if(allocated(cisb)) deallocate(cisb)
         if(allocated(moa)) deallocate(moa)
         if(allocated(mob)) deallocate(mob)
+        if(allocated(sao)) deallocate(sao)
        end subroutine test_chem_parser
 
        end module chem_parser
