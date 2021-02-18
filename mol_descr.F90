@@ -19,7 +19,7 @@
         real(8), allocatable:: cis_lu(:,:),cis_ul(:,:),t0(:,:),t1(:,:)
         integer:: num_occ,num_virt,num_cis_states,i,j,k,l,m,n
 
-        write(*,'("Computing Atomic State Vector descriptors:")')
+        write(*,'("Computing hole/particle density matrices:")')
  !Check input:
         write(*,'(" Checking input ... ")',ADVANCE='NO')
         if(mol_params%num_ao_orbitals.le.0.or.&
@@ -106,7 +106,7 @@
         deallocate(cis_ul)
         deallocate(cis_lu)
         write(*,'("Ok")')
-        write(*,'("Success: Atomic State Vectors computed successfully!")')
+        write(*,'("Success: Hole/particle density matrices computed successfully!")')
         return
        end subroutine compute_transition_density
 
