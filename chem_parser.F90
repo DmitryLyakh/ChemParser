@@ -741,15 +741,15 @@
         write(*,'()')
 
  !Test ORCA output parsing:
-        parsed=orca_extract_mol_params('orca_new.dat',mol_params)
-        parsed=orca_extract_overlap('orca_new.dat',mol_params,sao)
-        parsed=orca_extract_mo_coef('orca_new.s1.molden',mol_params,moa,mob)
+        parsed=orca_extract_mol_params('orca.dat',mol_params)
+        parsed=orca_extract_overlap('orca.dat',mol_params,sao)
+        parsed=orca_extract_mo_coef('orca.molden',mol_params,moa,mob)
         !call wr_mat_dp(size(moa,1),size(moa,2),moa) !debug
         !call wr_mat_dp(size(mob,1),size(mob,2),mob) !debug
-        parsed=orca_extract_cis_coef('orca_new.dat',mol_params,cisa,cisb)
+        parsed=orca_extract_cis_coef('orca.dat',mol_params,cisa,cisb)
         !call wr_mat_dp(size(cisa,1),size(cisa,2),cisa(:,:,1)) !debug
         !call wr_mat_dp(size(cisb,1),size(cisb,2),cisb(:,:,1)) !debug
-        parsed=orca_extract_basis_info('orca_new.s1.molden',mol_params,basis_info)
+        parsed=orca_extract_basis_info('orca.molden',mol_params,basis_info)
         if(allocated(basis_info)) deallocate(basis_info)
         if(allocated(cisa)) deallocate(cisa)
         if(allocated(cisb)) deallocate(cisb)

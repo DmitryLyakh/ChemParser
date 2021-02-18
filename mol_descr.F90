@@ -19,7 +19,9 @@
         real(8), allocatable:: cis_lu(:,:),cis_ul(:,:),t0(:,:),t1(:,:)
         integer:: num_occ,num_virt,num_cis_states,i,j,k,l,m,n
 
+        write(*,'("Computing Atomic State Vector descriptors:")')
  !Check input:
+        write(*,'(" Checking input ... ")',ADVANCE='NO')
         if(mol_params%num_ao_orbitals.le.0.or.&
           &mol_params%num_mo_orbitals.le.0.or.&
           &mol_params%num_electrons_a.le.0.or.&
@@ -49,14 +51,18 @@
         if(size(cis_b,1).ne.num_occ.or.size(cis_b,2).ne.num_virt.or.size(cis_b,3).ne.num_cis_states) then
          write(*,'("#ERROR(compute_transition_density): Invalid CIS coefficients beta matrix!")'); stop
         endif
+        write(*,'("Ok")')
  !Compute CIS coefficients in AO basis:
+        write(*,'(" Allocating arrays ... ")',ADVANCE='NO')
         allocate(hole_dens(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,num_cis_states))
         allocate(particle_dens(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,num_cis_states))
         allocate(cis_lu(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals))
         allocate(cis_ul(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals))
         allocate(t0(num_occ,mol_params%num_ao_orbitals))
         allocate(t1(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals))
+        write(*,'("Ok")')
         do n=1,num_cis_states
+         write(*,'(" Processing electronic state ",i4," ... ")',ADVANCE='NO') n
          hole_dens(:,:,n)=0d0; particle_dens(:,:,n)=0d0
   !Alpha contribution:
          t0(:,:)=0d0
@@ -92,11 +98,15 @@
                      &cis_ul(:,:),cis_lu(:,:),hole_dens(:,:,n))
          call mattmat(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
                      &cis_lu(:,:),cis_ul(:,:),particle_dens(:,:,n))
+         write(*,'("Ok")')
         enddo
+        write(*,'(" Cleaning temporaries ... ")',ADVANCE='NO')
         deallocate(t1)
         deallocate(t0)
         deallocate(cis_ul)
         deallocate(cis_lu)
+        write(*,'("Ok")')
+        write(*,'("Success: Atomic State Vectors computed successfully!")')
         return
        end subroutine compute_transition_density
 
