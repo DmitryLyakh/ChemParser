@@ -24,10 +24,10 @@
          allocate(hdiag(nh)); allocate(pdiag(np))
          do i=1,nh; hdiag(i)=hole_dens(i,i,1); enddo
          do i=1,np; pdiag(i)=particle_dens(i,i,1); enddo
-         write(*,'("Computed AO hole density matrix for excited state 1:")')
-         call wr_mat_dp(nh,nh,hole_dens(:,:,1))
-         write(*,'("Computed AO particle density matrix for excited state 1:")')
-         call wr_mat_dp(np,np,particle_dens(:,:,1))
+         !write(*,'("Computed AO hole density matrix for excited state 1:")')
+         !call wr_mat_dp(nh,nh,hole_dens(:,:,1))
+         !write(*,'("Computed AO particle density matrix for excited state 1:")')
+         !call wr_mat_dp(np,np,particle_dens(:,:,1))
          write(*,'("The AO hole density for excited state 1:")')
          do i=1,nh
           write(*,*) i,basis_info(i)%atom_id,basis_info(i)%shell_id,basis_info(i)%ao_id,hdiag(i)

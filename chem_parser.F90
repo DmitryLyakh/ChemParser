@@ -22,7 +22,7 @@
        type, public:: basis_func_info_t
         integer:: atom_id   !atom id {1..M}
         integer:: shell_id  !shell id within atom {0..L}
-        integer:: ao_id     !AO id within atom {0..K}
+        integer:: ao_id     !AO id within atom shell {0..S}
        end type basis_func_info_t
 
        public psi4_extract_mol_params
@@ -616,7 +616,7 @@
         character(*), intent(in):: filename                               !in: file name
         type(mol_params_t), intent(in):: mol_params                       !in: molecular parameters
         type(basis_func_info_t), allocatable, intent(out):: basis_info(:) !out: information of each basis function {1..N}
-        integer:: pred_offset(1024),pred_length(1024),num_pred,first,last,nocc,ierr,i,j,k,l,m,n
+        integer:: pred_offset(1024),pred_length(1024),num_pred,first,last,nocc,ierr,i,j,l,m,n
         character(1024):: str
         logical:: matched
         real(8):: val
@@ -635,8 +635,8 @@
             allocate(basis_info(mol_params%num_ao_orbitals))
             n=0
             do while(n.lt.mol_params%num_ao_orbitals) !loop over atoms
-             read(10,*) i,j !i = atom id
-             m=0; k=0
+             read(10,*) i,j !i = atom id: [1..N]
+             m=0
              do !loop over atomic shells
               str=' '; read(10,'(A1024)',end=100) str; l=len_trim(str)
               if(l.gt.0) then
@@ -647,8 +647,7 @@
                  n=n+1
                  basis_info(n)%atom_id=i
                  basis_info(n)%shell_id=m
-                 basis_info(n)%ao_id=k
-                 k=k+1
+                 basis_info(n)%ao_id=j-1
                 enddo
                 m=m+1
                case('p','P')
@@ -656,8 +655,7 @@
                  n=n+1
                  basis_info(n)%atom_id=i
                  basis_info(n)%shell_id=m
-                 basis_info(n)%ao_id=k
-                 k=k+1
+                 basis_info(n)%ao_id=j-1
                 enddo
                 m=m+1
                case('d','D')
@@ -665,8 +663,7 @@
                  n=n+1
                  basis_info(n)%atom_id=i
                  basis_info(n)%shell_id=m
-                 basis_info(n)%ao_id=k
-                 k=k+1
+                 basis_info(n)%ao_id=j-1
                 enddo
                 m=m+1
                case('f','F')
@@ -674,8 +671,7 @@
                  n=n+1
                  basis_info(n)%atom_id=i
                  basis_info(n)%shell_id=m
-                 basis_info(n)%ao_id=k
-                 k=k+1
+                 basis_info(n)%ao_id=j-1
                 enddo
                 m=m+1
                case('g','G')
@@ -683,8 +679,7 @@
                  n=n+1
                  basis_info(n)%atom_id=i
                  basis_info(n)%shell_id=m
-                 basis_info(n)%ao_id=k
-                 k=k+1
+                 basis_info(n)%ao_id=j-1
                 enddo
                 m=m+1
                case('h','H')
@@ -692,8 +687,7 @@
                  n=n+1
                  basis_info(n)%atom_id=i
                  basis_info(n)%shell_id=m
-                 basis_info(n)%ao_id=k
-                 k=k+1
+                 basis_info(n)%ao_id=j-1
                 enddo
                 m=m+1
                end select
