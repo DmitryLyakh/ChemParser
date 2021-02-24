@@ -479,7 +479,7 @@
         real(8), pointer:: mo_coef(:,:)
         integer:: pred_offset(1024),pred_length(1024),num_pred,first,last,spin,ierr,i,j,l,m,n
         character(1024):: str
-        logical:: matched
+        logical:: matched,found_alpha,found_beta
         real(8):: val
 
         parsed=.FALSE.
@@ -498,6 +498,7 @@
            mo_coef_a=0d0; mo_coef_b=0d0
            if(VERBOSE) write(*,'("Allocated MO coefficients: Dimensions = ",i9," x ",i9)')&
                             &mol_params%num_ao_orbitals,mol_params%num_mo_orbitals
+           found_alpha=.FALSE.; found_beta=.FALSE.
            do j=1,mol_params%num_mo_orbitals
             str=' '; read(10,'(A1024)') str
             str=' '; read(10,'(A1024)') str; l=len_trim(str)
@@ -506,9 +507,9 @@
             if(matched) then
              mo_coef=>NULL()
              if(str(pred_offset(1):pred_offset(1)+pred_length(1)-1).eq.'Alpha') then
-              mo_coef=>mo_coef_a
+              mo_coef=>mo_coef_a; found_alpha=.TRUE.
              elseif(str(pred_offset(1):pred_offset(1)+pred_length(1)-1).eq.'Beta') then
-              mo_coef=>mo_coef_b
+              mo_coef=>mo_coef_b; found_beta=.TRUE.
              endif
              if(associated(mo_coef)) then
               str=' '; read(10,'(A1024)') str; l=len_trim(str)
@@ -522,6 +523,13 @@
              write(*,'("#ERROR: Invalid format of MO coefficients: Spin not found!")'); stop
             endif
            enddo
+           if(found_alpha.and.(.not.found_beta)) then
+            mo_coef_b(:,:)=mo_coef_a(:,:)
+           elseif(found_beta.and.(.not.found_alpha)) then
+            mo_coef_a(:,:)=mo_coef_b(:,:)
+           elseif(.not.(found_alpha.or.found_beta)) then
+            write(*,'("#ERROR: Unable to extract MO coefficients!")'); stop
+           endif
            if(VERBOSE) write(*,'("Extracted the data successfully")')
            parsed=.TRUE.
            exit eloop
@@ -541,7 +549,7 @@
         real(8), pointer:: cis_coef(:,:,:)
         integer:: pred_offset(1024),pred_length(1024),num_pred,first,last,nocc,ierr,i,j,k,l,m,n
         character(1024):: str
-        logical:: matched
+        logical:: matched,found_alpha,found_beta
         real(8):: val
 
         parsed=.FALSE.
@@ -566,15 +574,16 @@
               if(str(1:5).eq.'STATE') exit
              endif
             enddo
+            found_alpha=.FALSE.; found_beta=.FALSE.
             do
              str=' '; read(10,'(A1024)') str; l=len_trim(str)
              if(l.gt.0) then
               matched=match_symb_pattern(str(1:l),'` -> ` : ` (c= `)',num_pred,pred_offset,pred_length,ierr)
               if(matched) then
                if(str(pred_offset(1)+pred_length(1)-1:pred_offset(1)+pred_length(1)-1).eq.'a') then
-                cis_coef=>cis_coef_a; nocc=mol_params%num_electrons_a
+                cis_coef=>cis_coef_a; nocc=mol_params%num_electrons_a; found_alpha=.TRUE.
                elseif(str(pred_offset(1)+pred_length(1)-1:pred_offset(1)+pred_length(1)-1).eq.'b') then
-                cis_coef=>cis_coef_b; nocc=mol_params%num_electrons_b
+                cis_coef=>cis_coef_b; nocc=mol_params%num_electrons_b; found_beta=.TRUE.
                else
                 write(*,'("#ERROR: Invalid format of CIS coefficients: Invalid spin label")'); stop
                endif
@@ -589,6 +598,13 @@
               exit
              endif
             enddo
+            if(found_alpha.and.(.not.found_beta)) then
+             cis_coef_b(:,:,m)=cis_coef_a(:,:,m)
+            elseif(found_beta.and.(.not.found_alpha)) then
+             cis_coef_a(:,:,m)=cis_coef_b(:,:,m)
+            elseif(.not.(found_alpha.or.found_beta)) then
+             write(*,'("#ERROR: Unable to find CIS coefficients for state ",i4)') m; stop
+            endif
             if(VERBOSE) write(*,'("Extracted CIS state ",i4)') m
            enddo
            if(VERBOSE) write(*,'("Extracted the data successfully")')

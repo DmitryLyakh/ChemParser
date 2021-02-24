@@ -16,8 +16,9 @@
         real(8), intent(in):: mo_a(:,:),mo_b(:,:)           ![1:AO,1:MO]
         real(8), intent(in):: cis_a(:,:,:),cis_b(:,:,:)     ![1:OCC,1:VIRT,1:STATE]
         real(8), allocatable, intent(out):: hole_dens(:,:,:),particle_dens(:,:,:) ![1:AO,1:AO,1:STATE]
-        real(8), allocatable:: cis_lu(:,:),cis_ul(:,:),t0(:,:),t1(:,:)
+        real(8), allocatable:: cis_lu(:,:),t0(:,:),t1(:,:)
         integer:: num_occ,num_virt,num_cis_states,i,j,k,l,m,n
+        real(8):: norm_a,norm_b
 
         write(*,'("Computing hole/particle density matrices:")')
  !Check input:
@@ -52,12 +53,29 @@
          write(*,'("#ERROR(compute_transition_density): Invalid CIS coefficients beta matrix!")'); stop
         endif
         write(*,'("Ok")')
- !Compute CIS coefficients in AO basis:
+ !Check CIS coefficients:
+        write(*,'(" Checking the norm of the CIS coefficients ... ")')
+        do n=1,num_cis_states
+         norm_a=0d0
+         do j=1,num_virt
+          do i=1,num_occ
+           norm_a = norm_a + cis_a(i,j,n)**2
+          enddo
+         enddo
+         norm_b=0d0
+         do j=1,num_virt
+          do i=1,num_occ
+           norm_b = norm_b + cis_b(i,j,n)**2
+          enddo
+         enddo
+         write(*,'("  State ",i3," norm alpha/beta = ",D25.14,1x,D25.14)') n,norm_a,norm_b
+        enddo
+        write(*,'("Ok")')
+ !Compute CIS hole/particle density matrices in AO basis:
         write(*,'(" Allocating arrays ... ")',ADVANCE='NO')
         allocate(hole_dens(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,num_cis_states))
         allocate(particle_dens(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,num_cis_states))
         allocate(cis_lu(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals))
-        allocate(cis_ul(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals))
         allocate(t0(num_occ,mol_params%num_ao_orbitals))
         allocate(t1(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals))
         write(*,'("Ok")')
@@ -65,45 +83,56 @@
          write(*,'(" Processing electronic state ",i4," ... ")',ADVANCE='NO') n
          hole_dens(:,:,n)=0d0; particle_dens(:,:,n)=0d0
   !Alpha contribution:
+   !t0(i,n) = cis_a(i,a) * mo_a(n,a):
          t0(:,:)=0d0
          call matmatt(num_occ,mol_params%num_ao_orbitals,num_virt,&
                      &cis_a(:,:,n),mo_a(:,num_occ+1:num_occ+num_virt),t0(:,:))
+   !t1(m,n) = mo_a(m,i) * t0(i,n):
          t1(:,:)=0d0
          call matmat(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,num_occ,&
                     &mo_a(:,1:num_occ),t0(:,:),t1(:,:))
+   !cis_lu(r,n) = overlap(r,s) * t1(n,s):
+         cis_lu(:,:)=0d0
+         call matmatt(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
+                     &overlap(:,:),t1(:,:),cis_lu(:,:))
+   !hole_dens(m,n) += t1(m,r) * cis_lu(r,n)
+         call matmat(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
+                    &t1(:,:),cis_lu(:,:),hole_dens(:,:,n))
+   !cis_lu(r,n) = overlap(r,s) * t1(s,n):
          cis_lu(:,:)=0d0
          call matmat(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
                     &overlap(:,:),t1(:,:),cis_lu(:,:))
-         cis_ul(:,:)=0d0
-         call matmat(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
-                    &t1(:,:),overlap(:,:),cis_ul(:,:))
-         call matmatt(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
-                     &cis_ul(:,:),cis_lu(:,:),hole_dens(:,:,n))
+   !particle_dens(m,n) += t1(r,m) * cis_lu(r,n):
          call mattmat(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
-                     &cis_lu(:,:),cis_ul(:,:),particle_dens(:,:,n))
+                     &t1(:,:),cis_lu(:,:),particle_dens(:,:,n))
   !Beta contribution:
+   !t0(i,n) = cis_a(i,a) * mo_a(n,a):
          t0(:,:)=0d0
          call matmatt(num_occ,mol_params%num_ao_orbitals,num_virt,&
                      &cis_b(:,:,n),mo_b(:,num_occ+1:num_occ+num_virt),t0(:,:))
+   !t1(m,n) = mo_a(m,i) * t0(i,n):
          t1(:,:)=0d0
          call matmat(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,num_occ,&
                     &mo_b(:,1:num_occ),t0(:,:),t1(:,:))
+   !cis_lu(r,n) = overlap(r,s) * t1(n,s):
+         cis_lu(:,:)=0d0
+         call matmatt(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
+                     &overlap(:,:),t1(:,:),cis_lu(:,:))
+   !hole_dens(m,n) += t1(m,r) * cis_lu(r,n)
+         call matmat(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
+                    &t1(:,:),cis_lu(:,:),hole_dens(:,:,n))
+   !cis_lu(r,n) = overlap(r,s) * t1(s,n):
          cis_lu(:,:)=0d0
          call matmat(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
                     &overlap(:,:),t1(:,:),cis_lu(:,:))
-         cis_ul(:,:)=0d0
-         call matmat(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
-                    &t1(:,:),overlap(:,:),cis_ul(:,:))
-         call matmatt(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
-                     &cis_ul(:,:),cis_lu(:,:),hole_dens(:,:,n))
+   !particle_dens(m,n) += t1(r,m) * cis_lu(r,n):
          call mattmat(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
-                     &cis_lu(:,:),cis_ul(:,:),particle_dens(:,:,n))
+                     &t1(:,:),cis_lu(:,:),particle_dens(:,:,n))
          write(*,'("Ok")')
         enddo
         write(*,'(" Cleaning temporaries ... ")',ADVANCE='NO')
         deallocate(t1)
         deallocate(t0)
-        deallocate(cis_ul)
         deallocate(cis_lu)
         write(*,'("Ok")')
         write(*,'("Success: Hole/particle density matrices computed successfully!")')
