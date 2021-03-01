@@ -5,7 +5,7 @@
         implicit none
         logical:: parsed
         type(mol_params_t):: mol_params
-        real(8), allocatable:: moa(:,:),mob(:,:),sao(:,:),cisa(:,:,:),cisb(:,:,:)
+        real(8), allocatable:: moa(:,:),mob(:,:),sao(:,:),cisa(:,:,:),cisb(:,:,:),cis_energy(:)
         real(8), allocatable:: hole_dens(:,:,:),particle_dens(:,:,:),hdiag(:),pdiag(:)
         type(basis_func_info_t), allocatable:: basis_info(:)
         integer:: i,nh,np
@@ -15,7 +15,7 @@
         parsed=orca_extract_mol_params('orca.dat',mol_params); if(.not.parsed) stop
         parsed=orca_extract_overlap('orca.dat',mol_params,sao); if(.not.parsed) stop
         parsed=orca_extract_mo_coef('orca.molden',mol_params,moa,mob); if(.not.parsed) stop
-        parsed=orca_extract_cis_coef('orca.dat',mol_params,cisa,cisb); if(.not.parsed) stop
+        parsed=orca_extract_cis_coef('orca.dat',mol_params,cis_energy,cisa,cisb); if(.not.parsed) stop
         parsed=orca_extract_basis_info('orca.molden',mol_params,basis_info); if(.not.parsed) stop
 
         call compute_transition_density(mol_params,basis_info,sao,moa,mob,cisa,cisb,hole_dens,particle_dens)

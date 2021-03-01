@@ -540,10 +540,11 @@
         return
        end function orca_extract_mo_coef
 
-       function orca_extract_cis_coef(filename,mol_params,cis_coef_a,cis_coef_b) result(parsed)
+       function orca_extract_cis_coef(filename,mol_params,cis_energy,cis_coef_a,cis_coef_b) result(parsed)
         logical:: parsed
         character(*), intent(in):: filename                           !in: file name
         type(mol_params_t), intent(in):: mol_params                   !in: molecular parameters
+        real(8), allocatable, intent(out):: cis_energy(:)             !out: CIS state energies
         real(8), allocatable, target, intent(out):: cis_coef_a(:,:,:) !out: alpha CIS coefficients for all states (occ,virt,state)
         real(8), allocatable, target, intent(out):: cis_coef_b(:,:,:) !out: beta CIS coefficients for all states (occ,virt,state)
         real(8), pointer:: cis_coef(:,:,:)
@@ -571,7 +572,12 @@
             do
              str=' '; read(10,'(A1024)') str; l=len_trim(str)
              if(l.ge.5) then
-              if(str(1:5).eq.'STATE') exit
+              matched=match_symb_pattern(str(1:l),'STATE  `:  E=   ` au      ` eV    ` cm**-1',&
+                                        &num_pred,pred_offset,pred_length,ierr)
+              if(matched) then
+               call charnum(str(pred_offset(2):pred_offset(2)+pred_length(2)-1),cis_energy(m),i)
+               exit
+              endif
              endif
             enddo
             found_alpha=.FALSE.; found_beta=.FALSE.
@@ -605,7 +611,7 @@
             elseif(.not.(found_alpha.or.found_beta)) then
              write(*,'("#ERROR: Unable to find CIS coefficients for state ",i4)') m; stop
             endif
-            if(VERBOSE) write(*,'("Extracted CIS state ",i4)') m
+            if(VERBOSE) write(*,'("Extracted CIS state ",i4," with energy ",F16.6)') m,cis_energy(m)
            enddo
            if(VERBOSE) write(*,'("Extracted the data successfully")')
            parsed=.TRUE.
@@ -615,9 +621,10 @@
            if(matched) then
             call charnum(str(pred_offset(2):pred_offset(2)+pred_length(2)-1),val,n)
             if(VERBOSE) write(*,'("Detected number of roots = ",i6)') n
+            allocate(cis_energy(1:n))
             allocate(cis_coef_a(mol_params%num_electrons_a,mol_params%num_mo_orbitals-mol_params%num_electrons_a,1:n))
             allocate(cis_coef_b(mol_params%num_electrons_b,mol_params%num_mo_orbitals-mol_params%num_electrons_b,1:n))
-            cis_coef_a=0d0; cis_coef_b=0d0
+            cis_coef_a=0d0; cis_coef_b=0d0; cis_energy=0d0
             if(VERBOSE) write(*,'("Allocated CIS coefficient arrays")')
            endif
           endif
@@ -730,7 +737,7 @@
        subroutine test_chem_parser()
         logical:: parsed
         type(mol_params_t):: mol_params
-        real(8), allocatable:: moa(:,:),mob(:,:),sao(:,:),cisa(:,:,:),cisb(:,:,:)
+        real(8), allocatable:: moa(:,:),mob(:,:),sao(:,:),cisa(:,:,:),cisb(:,:,:),cis_energy(:)
         type(basis_func_info_t), allocatable:: basis_info(:)
 
  !Test Psi4 output parsing:
@@ -756,7 +763,7 @@
         parsed=orca_extract_mo_coef('orca.molden',mol_params,moa,mob)
         !call wr_mat_dp(size(moa,1),size(moa,2),moa) !debug
         !call wr_mat_dp(size(mob,1),size(mob,2),mob) !debug
-        parsed=orca_extract_cis_coef('orca.dat',mol_params,cisa,cisb)
+        parsed=orca_extract_cis_coef('orca.dat',mol_params,cis_energy,cisa,cisb)
         !call wr_mat_dp(size(cisa,1),size(cisa,2),cisa(:,:,1)) !debug
         !call wr_mat_dp(size(cisb,1),size(cisb,2),cisb(:,:,1)) !debug
         parsed=orca_extract_basis_info('orca.molden',mol_params,basis_info)
