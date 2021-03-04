@@ -27,7 +27,7 @@
         real(8), intent(in):: mo_a(:,:),mo_b(:,:)           ![1:AO,1:MO]
         real(8), intent(in):: cis_a(:,:,:),cis_b(:,:,:)     ![1:OCC,1:VIRT,1:STATES]
         real(8), allocatable, intent(out):: hole_dens(:,:,:),particle_dens(:,:,:) ![1:AO,1:AO,1:STATES]
-        real(8), allocatable:: cis_lu(:,:),t0(:,:),t1(:,:),t2(:,:)
+        real(8), allocatable:: cis_ul(:,:),t0(:,:),t1(:,:),t2(:,:)
         integer:: num_occ,num_virt,num_cis_states,i,j,k,l,m,n
         real(8):: norm_a,norm_b
 
@@ -86,7 +86,7 @@
         write(*,'(" Allocating arrays ... ")',ADVANCE='NO')
         allocate(hole_dens(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,num_cis_states))
         allocate(particle_dens(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,num_cis_states))
-        allocate(cis_lu(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals))
+        allocate(cis_ul(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals))
         allocate(t0(num_occ,mol_params%num_ao_orbitals))
         allocate(t1(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals))
         if(BIORTH_DENSITY) allocate(t2(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals))
@@ -103,39 +103,39 @@
          t1(:,:)=0d0
          call matmat(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,num_occ,&
                     &mo_a(:,1:num_occ),t0(:,:),t1(:,:))
-   !cis_lu(r,n) = overlap(r,s) * t1(n,s):
-         cis_lu(:,:)=0d0
+   !cis_ul(n,r) =  t1(n,s) * overlap(r,s):
+         cis_ul(:,:)=0d0
          call matmatt(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
-                     &overlap(:,:),t1(:,:),cis_lu(:,:))
+                     &t1(:,:),overlap(:,:),cis_ul(:,:))
          if(BIORTH_DENSITY) then
-   !t2(m,n) = t1(m,r) * cis_lu(r,n)
+   !t2(m,n) = t1(m,r) * cis_ul(n,r):
           t2(:,:)=0d0
-          call matmat(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
-                     &t1(:,:),cis_lu(:,:),t2(:,:))
-   !hole_dens(m,n) += t2(m,r) * overlap(r,n)
+          call matmatt(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
+                      &t1(:,:),cis_ul(:,:),t2(:,:))
+   !hole_dens(m,n) += t2(m,r) * overlap(r,n):
           call matmat(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
                      &t2(:,:),overlap(:,:),hole_dens(:,:,n))
          else
-   !hole_dens(m,n) = t1(m,r) * cis_lu(r,n)
-          call matmat(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
-                     &t1(:,:),cis_lu(:,:),hole_dens(:,:,n))
+   !hole_dens(m,n) = t1(m,r) * cis_ul(n,r):
+          call matmatt(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
+                      &t1(:,:),cis_ul(:,:),hole_dens(:,:,n))
          endif
-   !cis_lu(r,n) = overlap(r,s) * t1(s,n):
-         cis_lu(:,:)=0d0
+   !cis_ul(r,n) = overlap(r,s) * t1(s,n):
+         cis_ul(:,:)=0d0
          call matmat(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
-                    &overlap(:,:),t1(:,:),cis_lu(:,:))
+                    &overlap(:,:),t1(:,:),cis_ul(:,:))
          if(BIORTH_DENSITY) then
-   !t2(m,n) = t1(r,m) * cis_lu(r,n):
+   !t2(m,n) = t1(r,m) * cis_ul(r,n):
           t2(:,:)=0d0
           call mattmat(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
-                      &t1(:,:),cis_lu(:,:),t2(:,:))
-   !particle_dens(m,n) += t2(m,r) * overlap(r,n)
+                      &t1(:,:),cis_ul(:,:),t2(:,:))
+   !particle_dens(m,n) += t2(m,r) * overlap(r,n):
           call matmat(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
                      &t2(:,:),overlap(:,:),particle_dens(:,:,n))
          else
-   !particle_dens(m,n) = t1(r,m) * cis_lu(r,n):
+   !particle_dens(m,n) = t1(r,m) * cis_ul(r,n):
           call mattmat(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
-                      &t1(:,:),cis_lu(:,:),particle_dens(:,:,n))
+                      &t1(:,:),cis_ul(:,:),particle_dens(:,:,n))
          endif
   !Beta contribution:
    !t0(i,n) = cis_a(i,a) * mo_a(n,a):
@@ -146,39 +146,39 @@
          t1(:,:)=0d0
          call matmat(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,num_occ,&
                     &mo_b(:,1:num_occ),t0(:,:),t1(:,:))
-   !cis_lu(r,n) = overlap(r,s) * t1(n,s):
-         cis_lu(:,:)=0d0
+   !cis_ul(n,r) = t1(n,s) * overlap(r,s):
+         cis_ul(:,:)=0d0
          call matmatt(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
-                     &overlap(:,:),t1(:,:),cis_lu(:,:))
+                     &t1(:,:),overlap(:,:),cis_ul(:,:))
          if(BIORTH_DENSITY) then
-   !t2(m,n) = t1(m,r) * cis_lu(r,n)
+   !t2(m,n) = t1(m,r) * cis_ul(n,r):
           t2(:,:)=0d0
-          call matmat(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
-                     &t1(:,:),cis_lu(:,:),t2(:,:))
-   !hole_dens(m,n) += t2(m,r) * overlap(r,n)
+          call matmatt(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
+                      &t1(:,:),cis_ul(:,:),t2(:,:))
+   !hole_dens(m,n) += t2(m,r) * overlap(r,n):
           call matmat(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
                      &t2(:,:),overlap(:,:),hole_dens(:,:,n))
          else
-   !hole_dens(m,n) = t1(m,r) * cis_lu(r,n)
-          call matmat(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
-                     &t1(:,:),cis_lu(:,:),hole_dens(:,:,n))
+   !hole_dens(m,n) = t1(m,r) * cis_ul(n,r):
+          call matmatt(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
+                      &t1(:,:),cis_ul(:,:),hole_dens(:,:,n))
          endif
-   !cis_lu(r,n) = overlap(r,s) * t1(s,n):
-         cis_lu(:,:)=0d0
+   !cis_ul(r,n) = overlap(r,s) * t1(s,n):
+         cis_ul(:,:)=0d0
          call matmat(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
-                    &overlap(:,:),t1(:,:),cis_lu(:,:))
+                    &overlap(:,:),t1(:,:),cis_ul(:,:))
          if(BIORTH_DENSITY) then
-   !t2(m,n) = t1(r,m) * cis_lu(r,n):
+   !t2(m,n) = t1(r,m) * cis_ul(r,n):
           t2(:,:)=0d0
           call mattmat(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
-                      &t1(:,:),cis_lu(:,:),t2(:,:))
+                      &t1(:,:),cis_ul(:,:),t2(:,:))
    !particle_dens(m,n) += t2(m,r) * overlap(r,n)
           call matmat(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
                      &t2(:,:),overlap(:,:),particle_dens(:,:,n))
          else
-   !particle_dens(m,n) = t1(r,m) * cis_lu(r,n):
+   !particle_dens(m,n) = t1(r,m) * cis_ul(r,n):
           call mattmat(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
-                      &t1(:,:),cis_lu(:,:),particle_dens(:,:,n))
+                      &t1(:,:),cis_ul(:,:),particle_dens(:,:,n))
          endif
          write(*,'("Ok")')
         enddo
@@ -186,7 +186,7 @@
         if(allocated(t2)) deallocate(t2)
         if(allocated(t1)) deallocate(t1)
         if(allocated(t0)) deallocate(t0)
-        if(allocated(cis_lu)) deallocate(cis_lu)
+        if(allocated(cis_ul)) deallocate(cis_ul)
         write(*,'("Ok")')
         write(*,'("Success: Hole/particle density matrices computed successfully!")')
         return
