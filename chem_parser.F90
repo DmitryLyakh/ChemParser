@@ -8,7 +8,10 @@
 
        logical, private:: VERBOSE=.TRUE.
 
+       integer, parameter, public:: MAX_AO_SHELLS=8
+
        type, public:: mol_params_t
+        integer:: num_atoms=0
         integer:: num_ao_orbitals=0
         integer:: num_mo_orbitals=0
         integer:: num_electrons=0
@@ -413,6 +416,12 @@
            enddo sloop
            parsed=.TRUE.
            exit eloop
+          else
+           matched=match_symb_pattern(str(1:l),' Number of atoms`.... `',num_pred,pred_offset,pred_length,ierr)
+           if(matched) then
+            call charnum(str(pred_offset(2):pred_offset(2)+pred_length(2)-1),val,mol_params%num_atoms)
+            if(VERBOSE) write(*,'("Extracted total number of atoms = ",i6)') mol_params%num_atoms
+           endif
           endif
          endif
         enddo eloop
