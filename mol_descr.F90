@@ -18,6 +18,8 @@
        public compute_atomic_state_vectors
        public print_atomic_state_vectors
 
+       private filter_small_elems
+
        contains
 
        subroutine compute_transition_density(mol_params,basis_info,overlap,mo_a,mo_b,cis_a,cis_b,hole_dens,particle_dens)
@@ -27,7 +29,7 @@
         real(8), intent(in):: mo_a(:,:),mo_b(:,:)           ![1:AO,1:MO]
         real(8), intent(in):: cis_a(:,:,:),cis_b(:,:,:)     ![1:OCC,1:VIRT,1:STATES]
         real(8), allocatable, intent(out):: hole_dens(:,:,:),particle_dens(:,:,:) ![1:AO,1:AO,1:STATES]
-        real(8), allocatable:: cis_ul(:,:),t0(:,:),t1(:,:),t2(:,:)
+        real(8), allocatable:: cis_ul(:,:),t0(:,:),t1(:,:),t2(:,:),     t3(:,:)
         integer:: num_occ,num_virt,num_cis_states,i,j,k,l,m,n
         real(8):: norm_a,norm_b
 
@@ -90,10 +92,30 @@
         allocate(t0(num_occ,mol_params%num_ao_orbitals))
         allocate(t1(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals))
         if(BIORTH_DENSITY) allocate(t2(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals))
+
+        allocate(t3(mol_params%num_mo_orbitals,mol_params%num_mo_orbitals))
+
         write(*,'("Ok")')
         do n=1,num_cis_states
          write(*,'(" Processing electronic state ",i4," ... ")',ADVANCE='NO') n
          hole_dens(:,:,n)=0d0; particle_dens(:,:,n)=0d0
+
+         write(*,'("Cmp*Cnp:")')
+         t1(:,:)=0d0
+         call matmatt(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_mo_orbitals,&
+                     &mo_a(:,:),mo_a(:,:),t1(:,:))
+         call filter_small_elems(t1,1d-10)
+         call wr_mat_dp(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,t1(:,:))
+
+         write(*,'("Cmp*Cmq:")')
+         t3(:,:)=0d0
+         call mattmat(mol_params%num_mo_orbitals,mol_params%num_mo_orbitals,mol_params%num_ao_orbitals,&
+                     &mo_a(:,:),mo_a(:,:),t3(:,:))
+         call filter_small_elems(t3,1d-10)
+         call wr_mat_dp(mol_params%num_mo_orbitals,mol_params%num_mo_orbitals,t3(:,:))
+         stop
+
+
   !Alpha contribution:
    !t0(i,n) = cis_a(i,a) * mo_a(n,a):
          t0(:,:)=0d0
@@ -256,5 +278,18 @@
         write(*,'("Success: Atomic state vectors printed successfully!")')
         return
        end subroutine print_atomic_state_vectors
+
+       subroutine filter_small_elems(matrix,thresh)
+        real(8), intent(inout):: matrix(:,:)
+        real(8), intent(in):: thresh
+        integer:: i,j
+
+        do j=lbound(matrix,2),ubound(matrix,2)
+         do i=lbound(matrix,1),ubound(matrix,1)
+          if(abs(matrix(i,j)).le.thresh) matrix(i,j)=0d0
+         enddo
+        enddo
+        return
+       end subroutine filter_small_elems
 
        end module mol_descr

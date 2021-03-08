@@ -36,6 +36,7 @@
        public orca_extract_mol_params
        public orca_extract_overlap
        public orca_extract_mo_coef
+       public orca_extract_mo_coef_molden
        public orca_extract_cis_coef
        public orca_extract_basis_info
 
@@ -485,6 +486,74 @@
         type(mol_params_t), intent(in):: mol_params                !in: molecular parameters
         real(8), allocatable, target, intent(out):: mo_coef_a(:,:) !out: alpha MO coefficients (AO,MO)
         real(8), allocatable, target, intent(out):: mo_coef_b(:,:) !out: beta MO coefficients (AO,MO)
+        integer:: pred_offset(1024),pred_length(1024),num_pred,first,last,spin,ierr,i,j,l,m,n
+        character(1024):: str,pattern
+        logical:: matched,found_alpha,found_beta
+        real(8):: val
+
+        parsed=.FALSE.
+        open(10,file=filename(1:len_trim(filename)),form='FORMATTED',status='OLD')
+        if(VERBOSE) then
+         write(*,'("Processing file")',advance='NO'); write(*,*) filename(1:len_trim(filename))
+        endif
+        eloop: do
+         str=' '; read(10,'(A1024)',end=100) str; l=len_trim(str)
+         if(l.gt.0) then
+          call skip_blanks(str(1:l),first,last)
+          if(str(first:first+len_trim('MOLECULAR ORBITALS')-1).eq.'MOLECULAR ORBITALS') then
+           if(VERBOSE) write(*,'("Detected MO coefficients")')
+           str=' '; read(10,'(A1024)') str
+           allocate(mo_coef_a(mol_params%num_ao_orbitals,mol_params%num_mo_orbitals))
+           allocate(mo_coef_b(mol_params%num_ao_orbitals,mol_params%num_mo_orbitals))
+           mo_coef_a=0d0; mo_coef_b=0d0
+           if(VERBOSE) write(*,'("Allocated MO coefficients: Dimensions = ",i9," x ",i9)')&
+                            &mol_params%num_ao_orbitals,mol_params%num_mo_orbitals
+           found_alpha=.FALSE.; found_beta=.FALSE.
+           do j=1,mol_params%num_mo_orbitals,6
+            str=' '; read(10,'(A1024)') str
+            str=' '; read(10,'(A1024)') str
+            str=' '; read(10,'(A1024)') str
+            str=' '; read(10,'(A1024)') str
+            do i=1,mol_params%num_ao_orbitals
+             str=' '; read(10,'(A1024)') str; l=len_trim(str)
+             pattern=' ` `'; n=len_trim(pattern)
+             do m=0,min(5,mol_params%num_mo_orbitals-j)
+              pattern(n+1:n+2)=' `'; n=n+2
+             enddo
+             matched=match_symb_pattern(str(1:l),pattern(1:n),num_pred,pred_offset,pred_length,ierr)
+             if(matched) then
+              do m=0,min(5,mol_params%num_mo_orbitals-j)
+               call charnum(str(pred_offset(3+m):pred_offset(3+m)+pred_length(3+m)-1),mo_coef_a(i,j+m),n)
+              enddo
+             else
+              write(*,'("#ERROR: Invalid format of MO coefficients!")'); stop
+             endif
+            enddo
+           enddo
+           found_alpha=.TRUE.
+           if(found_alpha.and.(.not.found_beta)) then
+            mo_coef_b(:,:)=mo_coef_a(:,:)
+           elseif(found_beta.and.(.not.found_alpha)) then
+            mo_coef_a(:,:)=mo_coef_b(:,:)
+           elseif(.not.(found_alpha.or.found_beta)) then
+            write(*,'("#ERROR: Unable to extract MO coefficients!")'); stop
+           endif
+           if(VERBOSE) write(*,'("Extracted the data successfully")')
+           parsed=.TRUE.
+           exit eloop
+          endif
+         endif
+        enddo eloop
+100     close(10)
+        return
+       end function orca_extract_mo_coef
+
+       function orca_extract_mo_coef_molden(filename,mol_params,mo_coef_a,mo_coef_b) result(parsed)
+        logical:: parsed
+        character(*), intent(in):: filename                        !in: file name
+        type(mol_params_t), intent(in):: mol_params                !in: molecular parameters
+        real(8), allocatable, target, intent(out):: mo_coef_a(:,:) !out: alpha MO coefficients (AO,MO)
+        real(8), allocatable, target, intent(out):: mo_coef_b(:,:) !out: beta MO coefficients (AO,MO)
         real(8), pointer:: mo_coef(:,:)
         integer:: pred_offset(1024),pred_length(1024),num_pred,first,last,spin,ierr,i,j,l,m,n
         character(1024):: str
@@ -547,7 +616,7 @@
         enddo eloop
 100     close(10)
         return
-       end function orca_extract_mo_coef
+       end function orca_extract_mo_coef_molden
 
        function orca_extract_cis_coef(filename,mol_params,cis_energy,cis_coef_a,cis_coef_b) result(parsed)
         logical:: parsed
@@ -769,7 +838,8 @@
  !Test ORCA output parsing:
         parsed=orca_extract_mol_params('orca.dat',mol_params)
         parsed=orca_extract_overlap('orca.dat',mol_params,sao)
-        parsed=orca_extract_mo_coef('orca.molden',mol_params,moa,mob)
+        parsed=orca_extract_mo_coef('orca.dat',mol_params,moa,mob)
+        !parsed=orca_extract_mo_coef_molden('orca.molden',mol_params,moa,mob)
         !call wr_mat_dp(size(moa,1),size(moa,2),moa) !debug
         !call wr_mat_dp(size(mob,1),size(mob,2),mob) !debug
         parsed=orca_extract_cis_coef('orca.dat',mol_params,cis_energy,cisa,cisb)
