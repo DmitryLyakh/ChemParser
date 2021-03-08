@@ -838,8 +838,8 @@
  !Test ORCA output parsing:
         parsed=orca_extract_mol_params('orca.dat',mol_params)
         parsed=orca_extract_overlap('orca.dat',mol_params,sao)
-        parsed=orca_extract_mo_coef('orca.dat',mol_params,moa,mob)
-        !parsed=orca_extract_mo_coef_molden('orca.molden',mol_params,moa,mob)
+        !parsed=orca_extract_mo_coef('orca.dat',mol_params,moa,mob)
+        parsed=orca_extract_mo_coef_molden('orca.molden',mol_params,moa,mob)
         !call wr_mat_dp(size(moa,1),size(moa,2),moa) !debug
         !call wr_mat_dp(size(mob,1),size(mob,2),mob) !debug
         parsed=orca_extract_cis_coef('orca.dat',mol_params,cis_energy,cisa,cisb)
