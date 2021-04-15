@@ -715,9 +715,9 @@
        function orca_extract_basis_info(filename,mol_params,basis_info) result(parsed)
         logical:: parsed
         character(*), intent(in):: filename                               !in: file name
-        type(mol_params_t), intent(in):: mol_params                       !in: molecular parameters
+        type(mol_params_t), intent(inout):: mol_params                    !in: molecular parameters
         type(basis_func_info_t), allocatable, intent(out):: basis_info(:) !out: information of each basis function {1..N}
-        integer:: pred_offset(1024),pred_length(1024),num_pred,first,last,nocc,ierr,i,j,l,m,n
+        integer:: pred_offset(1024),pred_length(1024),num_pred,first,last,nocc,ierr,i,j,l,m,n,natoms
         character(1024):: str
         logical:: matched
         real(8):: val
@@ -734,9 +734,10 @@
            if(str(1:l).eq.'[GTO]') then
             if(VERBOSE) write(*,'("Detected Gaussian type orbital information:")')
             allocate(basis_info(mol_params%num_ao_orbitals))
-            n=0
+            natoms=0; n=0
             do while(n.lt.mol_params%num_ao_orbitals) !loop over atoms
              read(10,*) i,j !i = atom id: [1..N]
+             natoms=max(natoms,i)
              m=0
              do !loop over atomic shells
               str=' '; read(10,'(A1024)',end=100) str; l=len_trim(str)
@@ -797,6 +798,7 @@
               endif
              enddo
             enddo
+            if(mol_params%num_atoms.le.0) mol_params%num_atoms=natoms
             if(VERBOSE) then
              write(*,'("Extracted ",i7," basis functions successfully")') n
             endif

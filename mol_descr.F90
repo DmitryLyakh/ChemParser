@@ -1,4 +1,4 @@
-!Molecular descriptor generator
+!Molecular descriptor generator (atomic state vector for ANI model)
 !Author: Dmitry I. Lyakh
        module mol_descr
        use chem_parser
@@ -27,9 +27,9 @@
         real(8), intent(in):: mo_a(:,:),mo_b(:,:)           ![1:AO,1:MO]
         real(8), intent(in):: cis_a(:,:,:),cis_b(:,:,:)     ![1:OCC,1:VIRT,1:STATES]
         real(8), allocatable, intent(out):: hole_dens(:,:,:),particle_dens(:,:,:) ![1:AO,1:AO,1:STATES]
-        real(8), allocatable:: cis_ul(:,:),t0(:,:),t1(:,:),t2(:,:)
+        real(8), allocatable:: hdm(:,:),pdm(:,:),hao(:,:),pav(:,:),maa(:,:),mtx(:,:),mmm(:,:)
         integer:: num_occ,num_virt,num_cis_states,i,j,k,l,m,n
-        real(8):: norm_a,norm_b
+        real(8):: norm_a,norm_b,metrics_ao,metrics_mo
 
         write(*,'("Computing hole/particle density matrices:")')
  !Check input:
@@ -41,27 +41,27 @@
          write(*,'("#ERROR(compute_transition_density): Invalid molecular parameters!")'); stop
         endif
         if(mol_params%num_electrons_a.ne.mol_params%num_electrons_b) then
-         write(*,'("#ERROR(compute_transition_density): Spin-polarized molecules are not supported!")'); stop
+         write(*,'("#ERROR(compute_transition_density): Spin-polarized molecules are not supported yet!")'); stop
         endif
         num_occ=mol_params%num_electrons_a; num_virt=mol_params%num_mo_orbitals-num_occ
         if(size(basis_info,1).ne.mol_params%num_ao_orbitals) then
-         write(*,'("#ERROR(compute_transition_density): Invalid basis info!")'); stop
+         write(*,'("#ERROR(compute_transition_density): Invalid basis info size!")'); stop
         endif
         if(size(overlap,1).ne.mol_params%num_ao_orbitals.or.size(overlap,2).ne.mol_params%num_ao_orbitals) then
-         write(*,'("#ERROR(compute_transition_density): Invalid overlap matrix!")'); stop
+         write(*,'("#ERROR(compute_transition_density): Invalid overlap matrix shape!")'); stop
         endif
         if(size(mo_a,1).ne.mol_params%num_ao_orbitals.or.size(mo_a,2).ne.mol_params%num_mo_orbitals) then
-         write(*,'("#ERROR(compute_transition_density): Invalid MO coefficients alpha matrix!")'); stop
+         write(*,'("#ERROR(compute_transition_density): Invalid shape of the MO coefficients alpha matrix!")'); stop
         endif
         if(size(mo_b,1).ne.mol_params%num_ao_orbitals.or.size(mo_b,2).ne.mol_params%num_mo_orbitals) then
-         write(*,'("#ERROR(compute_transition_density): Invalid MO coefficients beta matrix!")'); stop
+         write(*,'("#ERROR(compute_transition_density): Invalid shape of the MO coefficients beta matrix!")'); stop
         endif
         num_cis_states=size(cis_a,3)
         if(size(cis_a,1).ne.num_occ.or.size(cis_a,2).ne.num_virt) then
-         write(*,'("#ERROR(compute_transition_density): Invalid CIS coefficients alpha matrix!")'); stop
+         write(*,'("#ERROR(compute_transition_density): Invalid shape of the CIS coefficients alpha matrix!")'); stop
         endif
         if(size(cis_b,1).ne.num_occ.or.size(cis_b,2).ne.num_virt.or.size(cis_b,3).ne.num_cis_states) then
-         write(*,'("#ERROR(compute_transition_density): Invalid CIS coefficients beta matrix!")'); stop
+         write(*,'("#ERROR(compute_transition_density): Invalid shape of the CIS coefficients beta matrix!")'); stop
         endif
         write(*,'("Ok")')
  !Check CIS coefficients:
@@ -81,38 +81,89 @@
          enddo
          write(*,'("  State ",i3," norm alpha/beta = ",D25.14,1x,D25.14)') n,norm_a,norm_b
         enddo
-        write(*,'("Ok")')
+        write(*,'(" Ok")')
  !Compute CIS hole/particle density matrices in AO basis:
         write(*,'(" Allocating arrays ... ")',ADVANCE='NO')
         allocate(hole_dens(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,num_cis_states))
         allocate(particle_dens(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,num_cis_states))
-        allocate(cis_ul(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals))
-        allocate(t0(num_occ,mol_params%num_ao_orbitals))
-        allocate(t1(mol_params%num_ao_orbitals,mol_params%num_mo_orbitals))
-        allocate(t2(mol_params%num_mo_orbitals,mol_params%num_mo_orbitals))
+        allocate(hdm(num_occ,num_occ))
+        allocate(pdm(num_virt,num_virt))
+        allocate(hao(mol_params%num_ao_orbitals,num_occ))
+        allocate(pav(mol_params%num_ao_orbitals,num_virt))
+        allocate(maa(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals))
+        allocate(mtx(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals))
+        allocate(mmm(mol_params%num_mo_orbitals,mol_params%num_mo_orbitals))
         write(*,'("Ok")')
         do n=1,num_cis_states
-         write(*,'(" Processing electronic state ",i4," ... ")',ADVANCE='NO') n
+         write(*,'(" Processing electronic state ",i2," ... ")') n
          hole_dens(:,:,n)=0d0; particle_dens(:,:,n)=0d0
 
-         write(*,'("C*S*C:")')
-         t1(:,:)=0d0
-         call matmat(mol_params%num_ao_orbitals,mol_params%num_mo_orbitals,mol_params%num_ao_orbitals,&
-                     &overlap(:,:),mo_a(:,:),t1(:,:))
-         t2(:,:)=0d0
-         call mattmat(mol_params%num_mo_orbitals,mol_params%num_mo_orbitals,mol_params%num_ao_orbitals,&
-                      &mo_a(:,:),t1(:,:),t2(:,:))
-         call filter_small_elems(t2,1d-10)
-         call wr_mat_dp(mol_params%num_mo_orbitals,mol_params%num_mo_orbitals,t2(:,:))
-         stop
+         write(*,'("  Checking metrics ... ")',ADVANCE='NO')
+         maa(:,:)=0d0; mtx(:,:)=0d0
+         call matmatt(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_mo_orbitals,&
+                     &mo_a(:,:),mo_a(:,:),maa(:,:)) !inverse overlap
+         call matmat(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
+                    &maa(:,:),overlap(:,:),mtx(:,:)) !delta
+         !call wr_mat_dp(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mtx(:,:))
+         do i=1,mol_params%num_ao_orbitals; mtx(i,i)=mtx(i,i)-1d0; enddo
+         metrics_ao=max(abs(maxval(mtx)),abs(minval(mtx)))
+         write(*,'(" AO metrics error = ",D25.14,";")',ADVANCE='NO') metrics_ao
 
+         mmm(:,:)=0d0; mtx(:,:)=0d0
+         call matmat(mol_params%num_ao_orbitals,mol_params%num_mo_orbitals,mol_params%num_ao_orbitals,&
+                    &overlap(:,:),mo_a(:,:),mtx(:,1:mol_params%num_mo_orbitals))
+         call mattmat(mol_params%num_mo_orbitals,mol_params%num_mo_orbitals,mol_params%num_ao_orbitals,&
+                     &mo_a(:,:),mtx(:,1:mol_params%num_mo_orbitals),mmm(:,:))
+         !call wr_mat_dp(mol_params%num_mo_orbitals,mol_params%num_mo_orbitals,mmm(:,:))
+         do i=1,mol_params%num_mo_orbitals; mmm(i,i)=mmm(i,i)-1d0; enddo
+         metrics_mo=max(abs(maxval(mmm)),abs(minval(mmm)))
+         write(*,'(" MO metrics error = ",D25.14)',ADVANCE='NO') metrics_mo
+
+         if(metrics_ao.ge.1d-4.or.metrics_mo.ge.1d-4) then
+          write(*,'("  Failed")'); stop
+         endif
+         write(*,'(" Ok")')
+
+         write(*,'("  Computing hole density matrix ... ")',ADVANCE='NO')
+         hdm(:,:)=0d0; mtx(:,:)=0d0
+         call matmatt(num_occ,num_occ,num_virt,cis_a(:,:,n),cis_a(:,:,n),hdm(:,:))
+         call matmat(mol_params%num_ao_orbitals,num_occ,num_occ,&
+                    &mo_a(:,1:num_occ),hdm(:,:),mtx(:,1:num_occ))
+         call matmatt(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,num_occ,&
+                     &mtx(:,1:num_occ),mo_a(:,1:num_occ),hole_dens(:,:,n))
+         hdm(:,:)=0d0; mtx(:,:)=0d0
+         call matmatt(num_occ,num_occ,num_virt,cis_b(:,:,n),cis_b(:,:,n),hdm(:,:))
+         call matmat(mol_params%num_ao_orbitals,num_occ,num_occ,&
+                    &mo_b(:,1:num_occ),hdm(:,:),mtx(:,1:num_occ))
+         call matmatt(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,num_occ,&
+                     &mtx(:,1:num_occ),mo_b(:,1:num_occ),hole_dens(:,:,n))
          write(*,'("Ok")')
+
+         write(*,'("  Computing particle density matrix ... ")',ADVANCE='NO')
+         pdm(:,:)=0d0; mtx(:,:)=0d0
+         call mattmat(num_virt,num_virt,num_occ,cis_a(:,:,n),cis_a(:,:,n),pdm(:,:))
+         call matmat(mol_params%num_ao_orbitals,num_virt,num_virt,&
+                    &mo_a(:,num_occ+1:num_occ+num_virt),pdm(:,:),mtx(:,num_occ+1:num_occ+num_virt))
+         call matmatt(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,num_virt,&
+                     &mtx(:,num_occ+1:num_occ+num_virt),mo_a(:,num_occ+1:num_occ+num_virt),particle_dens(:,:,n))
+         pdm(:,:)=0d0; mtx(:,:)=0d0
+         call mattmat(num_virt,num_virt,num_occ,cis_b(:,:,n),cis_b(:,:,n),pdm(:,:))
+         call matmat(mol_params%num_ao_orbitals,num_virt,num_virt,&
+                    &mo_b(:,num_occ+1:num_occ+num_virt),pdm(:,:),mtx(:,num_occ+1:num_occ+num_virt))
+         call matmatt(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,num_virt,&
+                     &mtx(:,num_occ+1:num_occ+num_virt),mo_b(:,num_occ+1:num_occ+num_virt),particle_dens(:,:,n))
+         write(*,'("Ok")')
+
+         write(*,'(" Done")')
         enddo
         write(*,'(" Cleaning temporaries ... ")',ADVANCE='NO')
-        if(allocated(t2)) deallocate(t2)
-        if(allocated(t1)) deallocate(t1)
-        if(allocated(t0)) deallocate(t0)
-        if(allocated(cis_ul)) deallocate(cis_ul)
+        if(allocated(mmm)) deallocate(mmm)
+        if(allocated(mtx)) deallocate(mtx)
+        if(allocated(maa)) deallocate(maa)
+        if(allocated(pav)) deallocate(pav)
+        if(allocated(hao)) deallocate(hao)
+        if(allocated(pdm)) deallocate(pdm)
+        if(allocated(hdm)) deallocate(hdm)
         write(*,'("Ok")')
         write(*,'("Success: Hole/particle density matrices computed successfully!")')
         return
@@ -128,13 +179,13 @@
 
         write(*,'("Computing atomic state vectors:")')
         num_states=size(particle_dens,3)
-        write(*,'(" Allocating atomic state vectors array ",i6," x ",i3," ... ")',ADVANCE='NO')&
+        write(*,'(" Allocating atomic state vector array ",i6," x ",i3," ... ")',ADVANCE='NO')&
         &mol_params%num_atoms,num_states
         allocate(asv(1:mol_params%num_atoms,1:num_states))
         write(*,'("Ok")')
         num_basis_func=size(basis_info,1)
         do n=1,num_states
-         write(*,'(" Computing atomic state vectors for state ",i3," ... ")',ADVANCE='NO') n
+         write(*,'(" Computing atomic state vectors for state ",i2," ... ")',ADVANCE='NO') n
          atom=0; shell=0; hdens=0d0; pdens=0d0
          do m=1,num_basis_func
           if(basis_info(m)%atom_id.gt.atom) then !new atom
