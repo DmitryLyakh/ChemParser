@@ -8,7 +8,7 @@
 
        logical, private:: VERBOSE=.TRUE.
 
-       integer, parameter, public:: MAX_AO_SHELLS=8
+       integer, parameter, public:: MAX_AO_SHELLS=6 !{1s,2s,2p,3s,3p,3d}
 
        type, public:: mol_params_t
         integer:: num_atoms=0

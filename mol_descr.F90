@@ -25,11 +25,11 @@
         type(basis_func_info_t), intent(in):: basis_info(:) ![1:AO]
         real(8), intent(in):: overlap(:,:)                  ![1:AO,1:AO]
         real(8), intent(in):: mo_a(:,:),mo_b(:,:)           ![1:AO,1:MO]
-        real(8), intent(in):: cis_a(:,:,:),cis_b(:,:,:)     ![1:OCC,1:VIRT,1:STATES]
+        real(8), intent(inout):: cis_a(:,:,:),cis_b(:,:,:)  ![1:OCC,1:VIRT,1:STATES]
         real(8), allocatable, intent(out):: hole_dens(:,:,:),particle_dens(:,:,:) ![1:AO,1:AO,1:STATES]
         real(8), allocatable:: hdm(:,:),pdm(:,:),hao(:,:),pav(:,:),maa(:,:),mtx(:,:),mmm(:,:)
         integer:: num_occ,num_virt,num_cis_states,i,j,k,l,m,n
-        real(8):: norm_a,norm_b,metrics_ao,metrics_mo
+        real(8):: norm_a,norm_b,metrics_ao,metrics_mo,norm
 
         write(*,'("Computing hole/particle density matrices:")')
  !Check input:
@@ -80,8 +80,10 @@
           enddo
          enddo
          write(*,'("  State ",i3," norm alpha/beta = ",D25.14,1x,D25.14)') n,norm_a,norm_b
+         cis_a(:,:,n) = cis_a(:,:,n) * sqrt(1/norm_a)
+         cis_b(:,:,n) = cis_b(:,:,n) * sqrt(1/norm_b)
         enddo
-        write(*,'(" Ok")')
+        write(*,'(" Ok: All states renormalized to unity")')
  !Compute CIS hole/particle density matrices in AO basis:
         write(*,'(" Allocating arrays ... ")',ADVANCE='NO')
         allocate(hole_dens(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,num_cis_states))
@@ -95,7 +97,7 @@
         allocate(mmm(mol_params%num_mo_orbitals,mol_params%num_mo_orbitals))
         write(*,'("Ok")')
         do n=1,num_cis_states
-         write(*,'(" Processing electronic state ",i2," ... ")') n
+         write(*,'(" Processing electronic state ",i2," ...")') n
          hole_dens(:,:,n)=0d0; particle_dens(:,:,n)=0d0
 
          write(*,'("  Checking metrics ... ")',ADVANCE='NO')
@@ -125,34 +127,46 @@
          write(*,'(" Ok")')
 
          write(*,'("  Computing hole density matrix ... ")',ADVANCE='NO')
+         maa(:,:)=0d0
          hdm(:,:)=0d0; mtx(:,:)=0d0
          call matmatt(num_occ,num_occ,num_virt,cis_a(:,:,n),cis_a(:,:,n),hdm(:,:))
          call matmat(mol_params%num_ao_orbitals,num_occ,num_occ,&
                     &mo_a(:,1:num_occ),hdm(:,:),mtx(:,1:num_occ))
          call matmatt(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,num_occ,&
-                     &mtx(:,1:num_occ),mo_a(:,1:num_occ),hole_dens(:,:,n))
+                     &mtx(:,1:num_occ),mo_a(:,1:num_occ),maa(:,:))
          hdm(:,:)=0d0; mtx(:,:)=0d0
          call matmatt(num_occ,num_occ,num_virt,cis_b(:,:,n),cis_b(:,:,n),hdm(:,:))
          call matmat(mol_params%num_ao_orbitals,num_occ,num_occ,&
                     &mo_b(:,1:num_occ),hdm(:,:),mtx(:,1:num_occ))
          call matmatt(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,num_occ,&
-                     &mtx(:,1:num_occ),mo_b(:,1:num_occ),hole_dens(:,:,n))
-         write(*,'("Ok")')
+                     &mtx(:,1:num_occ),mo_b(:,1:num_occ),maa(:,:))
+         call matmat(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
+                    &overlap(:,:),maa(:,:),hole_dens(:,:,n))
+         hole_dens(:,:,n)=hole_dens(:,:,n)*(5d-1) !normalize to unity
+         norm=0d0; do i=1,mol_params%num_ao_orbitals; norm=norm+hole_dens(i,i,n); enddo
+         write(*,'("Trace = ",D25.14)',ADVANCE='NO') norm
+         write(*,'(" Ok")')
 
          write(*,'("  Computing particle density matrix ... ")',ADVANCE='NO')
+         maa(:,:)=0d0
          pdm(:,:)=0d0; mtx(:,:)=0d0
          call mattmat(num_virt,num_virt,num_occ,cis_a(:,:,n),cis_a(:,:,n),pdm(:,:))
          call matmat(mol_params%num_ao_orbitals,num_virt,num_virt,&
                     &mo_a(:,num_occ+1:num_occ+num_virt),pdm(:,:),mtx(:,num_occ+1:num_occ+num_virt))
          call matmatt(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,num_virt,&
-                     &mtx(:,num_occ+1:num_occ+num_virt),mo_a(:,num_occ+1:num_occ+num_virt),particle_dens(:,:,n))
+                     &mtx(:,num_occ+1:num_occ+num_virt),mo_a(:,num_occ+1:num_occ+num_virt),maa(:,:))
          pdm(:,:)=0d0; mtx(:,:)=0d0
          call mattmat(num_virt,num_virt,num_occ,cis_b(:,:,n),cis_b(:,:,n),pdm(:,:))
          call matmat(mol_params%num_ao_orbitals,num_virt,num_virt,&
                     &mo_b(:,num_occ+1:num_occ+num_virt),pdm(:,:),mtx(:,num_occ+1:num_occ+num_virt))
          call matmatt(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,num_virt,&
-                     &mtx(:,num_occ+1:num_occ+num_virt),mo_b(:,num_occ+1:num_occ+num_virt),particle_dens(:,:,n))
-         write(*,'("Ok")')
+                     &mtx(:,num_occ+1:num_occ+num_virt),mo_b(:,num_occ+1:num_occ+num_virt),maa(:,:))
+         call matmat(mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,mol_params%num_ao_orbitals,&
+                    &overlap(:,:),maa(:,:),particle_dens(:,:,n))
+         particle_dens(:,:,n)=particle_dens(:,:,n)*(5d-1) !normalize to unity
+         norm=0d0; do i=1,mol_params%num_ao_orbitals; norm=norm+particle_dens(i,i,n); enddo
+         write(*,'("Trace = ",D25.14)',ADVANCE='NO') norm
+         write(*,'(" Ok")')
 
          write(*,'(" Done")')
         enddo
@@ -182,6 +196,7 @@
         write(*,'(" Allocating atomic state vector array ",i6," x ",i3," ... ")',ADVANCE='NO')&
         &mol_params%num_atoms,num_states
         allocate(asv(1:mol_params%num_atoms,1:num_states))
+        asv(:,:)=atom_state_t(0,0,0,0)
         write(*,'("Ok")')
         num_basis_func=size(basis_info,1)
         do n=1,num_states
@@ -226,13 +241,28 @@
          do atom=1,size(asv,1)
           write(*,'(2x,"Atom ",i6)') asv(atom,state)%atom_id
           do shell=0,asv(atom,state)%num_shells-1
-           write(*,'(3x,i2,3x,D25.14,1x,D25.14)') shell,asv(atom,state)%hole_density(shell),asv(atom,state)%particle_density(shell)
+           write(*,'(3x,i2,3x,D15.7,1x,D15.7)') shell,asv(atom,state)%hole_density(shell),asv(atom,state)%particle_density(shell)
           enddo
          enddo
         enddo
         write(*,'("Success: Atomic state vectors printed successfully!")')
         return
        end subroutine print_atomic_state_vectors
+
+       subroutine save_atomic_state_vectors(asv,cis_energy)
+        type(atom_state_t), intent(in):: asv(1:,1:) ![1:ATOMS,1:STATES]
+        real(8), intent(in):: cis_energy(1:) ![1:STATES]
+        integer:: state,atom,shell
+
+        do state=1,size(asv,2)
+         write(*,'("Electronic state ",i3,": Energy = ",D20.7)') state,cis_energy(state)
+         do atom=1,size(asv,1)
+          write(*,'(32(2x,D15.7,1x,D15.7))')&
+          &(/(asv(atom,state)%hole_density(shell),asv(atom,state)%particle_density(shell),shell=0,MAX_AO_SHELLS-1)/)
+         enddo
+        enddo
+        return
+       end subroutine save_atomic_state_vectors
 
        subroutine filter_small_elems(matrix,thresh)
         real(8), intent(inout):: matrix(:,:)

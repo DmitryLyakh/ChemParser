@@ -36,24 +36,24 @@
           !write(*,'("Computed AO particle density matrix for excited state ",i2,":")') state
           !call wr_mat_dp(np,np,particle_dens(:,:,state))
 
-          write(*,'("The AO hole density for excited state ",i2,":")') state
-          dnorm=0d0
-          do i=1,nh
-           write(*,*) i,basis_info(i)%atom_id,basis_info(i)%shell_id,basis_info(i)%ao_id,hdiag(i)
-           dnorm=dnorm+hdiag(i)
-          enddo
-          write(*,'("The AO hole density trace = ",D25.14)') dnorm
+          !write(*,'("The AO hole density for excited state ",i2,":")') state
+          !dnorm=0d0
+          !do i=1,nh
+          ! write(*,*) i,basis_info(i)%atom_id,basis_info(i)%shell_id,basis_info(i)%ao_id,hdiag(i)
+          ! dnorm=dnorm+hdiag(i)
+          !enddo
+          !write(*,'("The AO hole density trace = ",D25.14)') dnorm
 
-          write(*,'("The AO particle density for excited state ",i2,":")') state
-          dnorm=0d0
-          do i=1,np
-           write(*,*) i,basis_info(i)%atom_id,basis_info(i)%shell_id,basis_info(i)%ao_id,pdiag(i)
-           dnorm=dnorm+pdiag(i)
-          enddo
-          write(*,'("The AO particle density trace = ",D25.14)') dnorm
+          !write(*,'("The AO particle density for excited state ",i2,":")') state
+          !dnorm=0d0
+          !do i=1,np
+          ! write(*,*) i,basis_info(i)%atom_id,basis_info(i)%shell_id,basis_info(i)%ao_id,pdiag(i)
+          ! dnorm=dnorm+pdiag(i)
+          !enddo
+          !write(*,'("The AO particle density trace = ",D25.14)') dnorm
 
           call compute_atomic_state_vectors(mol_params,basis_info,hole_dens,particle_dens,asv)
-          call print_atomic_state_vectors(asv)
+          call save_atomic_state_vectors(asv,cis_energy)
          else
           write(*,'("#ERROR: Number of AO mismatch in hole vs particle AO density matrix!")'); stop
          endif
