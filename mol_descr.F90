@@ -4,6 +4,7 @@
        use chem_parser
        use stsubs
        implicit none
+       private
 
        type, public:: atom_state_t
         integer:: atom_id=0                           !atom id: [1..M]
@@ -15,6 +16,8 @@
        public compute_transition_density
        public compute_atomic_state_vectors
        public print_atomic_state_vectors
+       public save_atomic_state_vectors
+       public save_atomic_state_vectors_raw
 
        private filter_small_elems
 
@@ -263,6 +266,27 @@
         enddo
         return
        end subroutine save_atomic_state_vectors
+
+       subroutine save_atomic_state_vectors_raw(asv,cis_energy)
+        type(atom_state_t), intent(in):: asv(1:,1:) ![1:ATOMS,1:STATES]
+        real(8), intent(in):: cis_energy(1:) ![1:STATES]
+        integer:: state,atom,shell,num_atoms,num_states
+
+        num_atoms=size(asv,1)
+        num_states=size(asv,2)
+        write(*,'("##### Raw atomic state vectors #####")')
+        write(*,*) num_atoms,num_states,MAX_AO_SHELLS
+        do state=1,num_states
+         write(*,'(1x,D20.7)') cis_energy(state)
+        enddo
+        do state=1,num_states
+         do atom=1,num_atoms
+          write(*,'(32(2x,D15.7,1x,D15.7))')&
+          &(/(asv(atom,state)%hole_density(shell),asv(atom,state)%particle_density(shell),shell=0,MAX_AO_SHELLS-1)/)
+         enddo
+        enddo
+        return
+       end subroutine save_atomic_state_vectors_raw
 
        subroutine filter_small_elems(matrix,thresh)
         real(8), intent(inout):: matrix(:,:)

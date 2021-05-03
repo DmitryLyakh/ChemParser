@@ -53,7 +53,7 @@
           !write(*,'("The AO particle density trace = ",D25.14)') dnorm
 
           call compute_atomic_state_vectors(mol_params,basis_info,hole_dens,particle_dens,asv)
-          call save_atomic_state_vectors(asv,cis_energy)
+          call save_atomic_state_vectors_raw(asv,cis_energy)
          else
           write(*,'("#ERROR: Number of AO mismatch in hole vs particle AO density matrix!")'); stop
          endif
