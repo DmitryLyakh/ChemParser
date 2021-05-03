@@ -15,12 +15,12 @@
         !call test_chem_parser()
 
         !Extract necessary quantum-chemical data:
-        parsed=orca_extract_mol_params('orca.main.dat',mol_params); if(.not.parsed) stop
-        parsed=orca_extract_overlap('orca.main.dat',mol_params,sao); if(.not.parsed) stop
-        parsed=orca_extract_mo_coef('orca.main.dat',mol_params,moa,mob); if(.not.parsed) stop
-        !parsed=orca_extract_mo_coef_molden('orca.ground.molden',mol_params,moa,mob); if(.not.parsed) stop
-        parsed=orca_extract_cis_coef('orca.main.dat',mol_params,cis_energy,cisa,cisb); if(.not.parsed) stop
-        parsed=orca_extract_basis_info('orca.ground.molden',mol_params,basis_info); if(.not.parsed) stop
+        parsed=orca_extract_mol_params('orca.dat',mol_params); if(.not.parsed) stop
+        parsed=orca_extract_overlap('orca.dat',mol_params,sao); if(.not.parsed) stop
+        parsed=orca_extract_mo_coef('orca.dat',mol_params,moa,mob); if(.not.parsed) stop
+        !parsed=orca_extract_mo_coef_molden('orca.molden',mol_params,moa,mob); if(.not.parsed) stop
+        parsed=orca_extract_cis_coef('orca.dat',mol_params,cis_energy,cisa,cisb); if(.not.parsed) stop
+        parsed=orca_extract_basis_info('orca.molden',mol_params,basis_info); if(.not.parsed) stop
 
         !Compute excited state descriptors (atomic state vectors):
         call compute_transition_density(mol_params,basis_info,sao,moa,mob,cisa,cisb,hole_dens,particle_dens)
