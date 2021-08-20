@@ -3,6 +3,9 @@
         use chem_parser
         use stsubs
         implicit none
+        !-----------------------------------------
+        logical, parameter:: IGNORE_OVERLAP=.TRUE.
+        !-----------------------------------------
         logical:: parsed
         type(mol_params_t):: mol_params
         real(8), allocatable:: moa(:,:),mob(:,:),sao(:,:),cisa(:,:,:),cisb(:,:,:),cis_energy(:)
@@ -17,6 +20,12 @@
         !Extract necessary quantum-chemical data:
         parsed=orca_extract_mol_params('orca.dat',mol_params); if(.not.parsed) stop
         parsed=orca_extract_overlap('orca.dat',mol_params,sao); if(.not.parsed) stop
+        if(IGNORE_OVERLAP) then
+         sao(:,:)=0d0
+         do i=lbound(sao,1),ubound(sao,1)
+          sao(i,i)=1d0
+         enddo
+        endif
         parsed=orca_extract_mo_coef('orca.dat',mol_params,moa,mob); if(.not.parsed) stop
         !parsed=orca_extract_mo_coef_molden('orca.molden',mol_params,moa,mob); if(.not.parsed) stop
         parsed=orca_extract_cis_coef('orca.dat',mol_params,cis_energy,cisa,cisb); if(.not.parsed) stop
